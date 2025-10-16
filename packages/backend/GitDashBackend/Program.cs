@@ -1,5 +1,4 @@
-using GitDashBackend.Services;
-using GitDashBackend.Services.Implementations;
+using GitDashBackend.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,7 +8,8 @@ builder.Services.AddControllers();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddScoped<IExampleEndpointsService, ExampleEndpointsService>();
+// Register custom services
+builder.Services.AddProjectServices();
 
 var app = builder.Build();
 
