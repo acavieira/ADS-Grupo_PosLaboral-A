@@ -1,4 +1,5 @@
 using GitDashBackend.Services;
+using GitDashBackend.Services.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 

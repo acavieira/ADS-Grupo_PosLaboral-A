@@ -1,4 +1,4 @@
-﻿namespace GitDashBackend.Services
+﻿namespace GitDashBackend.Services.Implementations
 {
     public class ExampleEndpointsService : IExampleEndpointsService
     {
