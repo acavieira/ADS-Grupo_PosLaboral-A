@@ -1,0 +1,41 @@
+# dependencies
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+
+# build output
+dist
+storybook-static
+
+
+# test & coverage
+coverage
+e2e
+*.spec.*
+*.test.*
+
+
+# system / editor
+.DS_Store
+.vscode
+.idea
+
+
+# docker
+Dockerfile*
+docker-compose*
+.dockerignore
+
+
+# git
+.git
+.gitignore
+.gitattributes
+
+
+# misc
+*.log
+*.swp
+
