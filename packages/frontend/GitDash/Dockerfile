@@ -2,8 +2,8 @@
 FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
-#COPY packages/core/package.json packages/core/
-#COPY packages/ui/package.json packages/ui/
+COPY packages/core/package.json packages/core/
+COPY packages/ui/package.json packages/ui/
 RUN npm ci
 COPY . .
 RUN npm run build

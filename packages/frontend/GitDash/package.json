@@ -20,7 +20,7 @@
     "build:ui": "npm run build -w packages/ui",
     "build:packages": "run-p build:core build:ui",
     "build-only": "vite build",
-    "type-check": "-tsc --build",
+    "type-check": "vue-tsc --build",
     "lint": "eslint . --fix",
     "format": "prettier --write src/",
     "test:packages": "npm run test -ws packages/*",
