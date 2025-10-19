@@ -17,7 +17,7 @@ export default defineConfig({
   build: {
     lib: {
       entry: path.resolve(__dirname, 'src/index.ts'),
-      name: 'intel-fce-ods-web-ui',
+      name: 'git-dash-ui',
       fileName: (format) => `ui.${format}.js`,
       formats: ['es', 'cjs'],
     },
