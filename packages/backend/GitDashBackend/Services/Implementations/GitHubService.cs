@@ -20,7 +20,7 @@ public class GitHubService : IGitHubService
     {
         var cacheKey = $"repos_{token.GetHashCode()}";
 
-        // Try to get from cache
+        // Try to get from the cache
         var cachedData = await _cache.GetStringAsync(cacheKey);
         if (!string.IsNullOrEmpty(cachedData))
         {

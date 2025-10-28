@@ -5,6 +5,7 @@ namespace GitDashBackend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Produces("application/json")]
 public class GitHubController : ControllerBase
 {
     private readonly IGitHubService _gitHubService;
@@ -19,9 +20,17 @@ public class GitHubController : ControllerBase
     /// <summary>
     /// Get user repositories from GitHub
     /// </summary>
-    /// <param name="token">GitHub personal access token</param>
-    /// <returns>List of repositories</returns>
+    /// <param name="authorization">GitHub Personal Access Token (with 'Bearer ' prefix or without)</param>
+    /// <returns>List of user repositories with caching</returns>
+    /// <response code="200">Returns the list of repositories</response>
+    /// <response code="400">If the Authorization header is missing</response>
+    /// <response code="401">If the GitHub token is invalid</response>
+    /// <response code="500">If there's an internal server error</response>
     [HttpGet("repositories")]
+    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositories([FromHeader(Name = "Authorization")] string? authorization)
     {
         if (string.IsNullOrEmpty(authorization))
@@ -40,7 +49,7 @@ public class GitHubController : ControllerBase
             return Ok(new { 
                 count = repositories.Count(),
                 repositories,
-                cached = true // This will be true after first call
+                cached = true
             });
         }
         catch (Octokit.AuthorizationException)
