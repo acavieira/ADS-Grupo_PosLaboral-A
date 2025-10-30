@@ -1,8 +1,8 @@
 # Build output
-bin/
-obj/
-out/
-artifacts/
+GitDashBackend/bin/
+GitDashBackend/obj/
+GitDashBackend/out/
+GitDashBackend/artifacts/
 
 # User-specific files
 *.user
@@ -32,4 +32,8 @@ mono_crash.*
 ~$*
 
 # Scaffolding
-ScaffoldingReadMe.txt
+GitDashBackend/ScaffoldingReadMe.txt
+
+# IDE-specific folders
+.vscode/
+.idea/
