@@ -1,23 +1,18 @@
 <template>
-  <div>
-    <h1>Dashboard</h1>
-    <p>Usuário: {{ userName }}</p>
-    <!--<p>Token (para dev apenas! não guardar em produção): {{ token }}</p>--><
-  </div>
+  <v-container>
+    <h1>Welcome, {{ userName }}</h1>
+    <v-btn color="red" @click="logout">Logout</v-btn>
+  </v-container>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { onMounted } from 'vue';
+import { useUserStore } from '@/stores/user';
 
-const route = useRoute();
-const userName = ref('');
-const token = ref('');
+const userStore = useUserStore();
+const { userName, fetchUser, logout } = userStore;
 
-onMounted(() => {
-  userName.value = route.query.user as string || '';
-  token.value = route.query.token as string || '';
-
-  // Aqui podes chamar APIs do backend usando token
+onMounted(async () => {
+  await fetchUser();
 });
 </script>

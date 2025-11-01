@@ -1,4 +1,3 @@
-using GitDashBackend.Configurations;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
@@ -7,17 +6,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Add services
 builder.Services.AddControllers();
-builder.Services.AddOpenApi();
-builder.Services.AddProjectServices();
-
-// Authentication with GitHub
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     options.DefaultChallengeScheme = "GitHub";
 })
-.AddCookie()
+.AddCookie(options =>
+{
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+})
 .AddOAuth("GitHub", options =>
 {
     options.ClientId = builder.Configuration["GitHub:ClientId"];
@@ -53,23 +52,10 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-// app.UseHttpsRedirection(); // opcional em dev
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
-
-// Redireciona raiz para frontend home
-app.MapGet("/", context =>
-{
-    context.Response.Redirect("http://localhost:5173"); // URL do frontend
-    return Task.CompletedTask;
-});
 
 // Login route inicia OAuth
 app.MapGet("/login", async context =>
@@ -85,17 +71,20 @@ app.MapGet("/auth/success", async context =>
 {
     if (context.User.Identity?.IsAuthenticated ?? false)
     {
-        var userName = context.User.Identity.Name ?? "";
-        var accessToken = await context.GetTokenAsync("access_token");
-
-        // Redireciona para o dashboard no frontend
-        var frontendUrl = $"http://localhost:5173/dashboard?user={userName}&token={accessToken}";
-        context.Response.Redirect(frontendUrl);
+        // Redireciona para frontend dashboard (sem token na URL)
+        context.Response.Redirect("http://localhost:5173/dashboard");
     }
     else
     {
         context.Response.Redirect("/login");
     }
+});
+
+// Logout
+app.MapGet("/logout", async context =>
+{
+    await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+    context.Response.Redirect("http://localhost:5173");
 });
 
 // API para frontend buscar info do user
