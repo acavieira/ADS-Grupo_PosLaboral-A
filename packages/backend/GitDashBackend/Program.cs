@@ -5,12 +5,12 @@ using Microsoft.AspNetCore.Authentication.OAuth;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//Add services to the container
+// Add services
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddProjectServices();
 
-//Configure authentication with GitHub
+// Authentication with GitHub
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
@@ -53,34 +53,34 @@ builder.Services.AddAuthentication(options =>
 
 var app = builder.Build();
 
-//Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
 
-//app.UseHttpsRedirection();
-
-//Middleware of authentication and authorization
+// app.UseHttpsRedirection(); // opcional em dev
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-//test route
-app.MapGet("/", async context =>
+// Redireciona raiz para frontend home
+app.MapGet("/", context =>
 {
-    context.Response.Redirect("/login");
+    context.Response.Redirect("http://localhost:5173"); // URL do frontend
+    return Task.CompletedTask;
 });
 
+// Login route inicia OAuth
 app.MapGet("/login", async context =>
 {
     await context.ChallengeAsync("GitHub", new AuthenticationProperties
     {
-        RedirectUri = "/auth/success" // nova rota que processa o login
+        RedirectUri = "/auth/success"
     });
 });
 
+// Callback do OAuth
 app.MapGet("/auth/success", async context =>
 {
     if (context.User.Identity?.IsAuthenticated ?? false)
@@ -88,9 +88,8 @@ app.MapGet("/auth/success", async context =>
         var userName = context.User.Identity.Name ?? "";
         var accessToken = await context.GetTokenAsync("access_token");
 
-        // URL do frontend (ex: Vue dev server)
+        // Redireciona para o dashboard no frontend
         var frontendUrl = $"http://localhost:5173/dashboard?user={userName}&token={accessToken}";
-
         context.Response.Redirect(frontendUrl);
     }
     else
@@ -99,5 +98,18 @@ app.MapGet("/auth/success", async context =>
     }
 });
 
+// API para frontend buscar info do user
+app.MapGet("/api/user", async context =>
+{
+    if (context.User.Identity?.IsAuthenticated ?? false)
+    {
+        var userName = context.User.Identity.Name ?? "";
+        await context.Response.WriteAsJsonAsync(new { userName });
+    }
+    else
+    {
+        context.Response.StatusCode = 401;
+    }
+});
 
 app.Run();
