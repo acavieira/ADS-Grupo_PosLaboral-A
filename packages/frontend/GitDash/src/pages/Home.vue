@@ -7,7 +7,7 @@
       <v-card-text class="text-center">
         <!-- GitHub Icon -->
         <v-avatar size="64" class="mx-auto mb-4">
-          <v-img src="@/assets/github-icon.png" alt="GitHub" />
+          <v-img src="/github-icon.png" alt="GitHub" />
         </v-avatar>
 
         <!-- Title -->
