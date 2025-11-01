@@ -59,7 +59,7 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+//app.UseHttpsRedirection();
 
 //Middleware of authentication and authorization
 app.UseAuthentication();
@@ -70,9 +70,28 @@ app.MapControllers();
 //test route
 app.MapGet("/", async context =>
 {
+    context.Response.Redirect("/login");
+});
+
+app.MapGet("/login", async context =>
+{
+    await context.ChallengeAsync("GitHub", new AuthenticationProperties
+    {
+        RedirectUri = "/auth/success" // nova rota que processa o login
+    });
+});
+
+app.MapGet("/auth/success", async context =>
+{
     if (context.User.Identity?.IsAuthenticated ?? false)
     {
-        await context.Response.WriteAsync($"Olá, {context.User.Identity.Name}!");
+        var userName = context.User.Identity.Name ?? "";
+        var accessToken = await context.GetTokenAsync("access_token");
+
+        // URL do frontend (ex: Vue dev server)
+        var frontendUrl = $"http://localhost:5173/dashboard?user={userName}&token={accessToken}";
+
+        context.Response.Redirect(frontendUrl);
     }
     else
     {
@@ -80,12 +99,5 @@ app.MapGet("/", async context =>
     }
 });
 
-app.MapGet("/login", async context =>
-{
-    await context.ChallengeAsync("GitHub", new AuthenticationProperties
-    {
-        RedirectUri = "/"
-    });
-});
 
 app.Run();
