@@ -1,15 +1,19 @@
-/*import path from 'node:path'
+import path from 'node:path'
 import { fileURLToPath, URL } from 'node:url'
 import { defineConfig, mergeConfig, configDefaults } from 'vitest/config'
 import baseViteConfig from './vite.config'
+import { storybookTest } from '@storybook/addon-vitest/vitest-plugin'
+const dirname =
+  typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url))
 
-
+// More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 const viteConfigObject =
   typeof baseViteConfig === 'function'
-    ? baseViteConfig({ command: 'serve', mode: 'test' })
+    ? baseViteConfig({
+        command: 'serve',
+        mode: 'test',
+      })
     : baseViteConfig
-
-
 export default mergeConfig(
   viteConfigObject,
   defineConfig({
@@ -21,21 +25,55 @@ export default mergeConfig(
       },
       dedupe: ['vue'],
     },
-    test: {
-      environment: 'jsdom',
-      exclude: [...configDefaults.exclude, 'e2e/**'],
-      css: true,
-      server: {
-        deps: { inline: ['vuetify'] },
-      },
-      setupFiles: './src/__tests__/setup.ts',
+    ssr: {
+      noExternal: ['vuetify'],
     },
-    ssr: { noExternal: ['vuetify'] },
+    test: {
+      projects: [
+        {
+          extends: true,
+          test: {
+            environment: 'jsdom',
+            exclude: [...configDefaults.exclude, 'e2e/**'],
+            css: true,
+            server: {
+              deps: {
+                inline: ['vuetify'],
+              },
+            },
+            setupFiles: './src/__tests__/setup.ts',
+          },
+        },
+        {
+          extends: true,
+          plugins: [
+            // The plugin will run tests for the stories defined in your Storybook config
+            // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
+            storybookTest({
+              configDir: path.join(dirname, '.storybook'),
+            }),
+          ],
+          test: {
+            name: 'storybook',
+            browser: {
+              enabled: true,
+              headless: true,
+              provider: 'playwright',
+              instances: [
+                {
+                  browser: 'chromium',
+                },
+              ],
+            },
+            setupFiles: ['.storybook/vitest.setup.ts'],
+          },
+        },
+      ],
+    },
   }),
-)*/
+)
 
-
-import { defineConfig } from 'vite'
+/*import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import path from 'path'
 
@@ -46,4 +84,4 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'), // <-- aqui @ = src
     },
   },
-})
+})*/

@@ -1,10 +1,9 @@
-// src/router/index.ts
 import { createRouter, createWebHistory } from 'vue-router';
-import Home from '@/pages/Home.vue';
+import Login from '@/pages/Login.vue';
 import Dashboard from '@/pages/Dashboard.vue';
 
 const routes = [
-  { path: '/', component: Home },
+  { path: '/', component: Login },       // agora o login é a página inicial
   { path: '/dashboard', component: Dashboard },
 ];
 
