@@ -2,6 +2,15 @@ using GitDashBackend.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Logging with timestamp
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+    options.UseUtcTimestamp = false;
+});
+
+
 // Add services to the container.
 builder.Services.AddControllers();
 
