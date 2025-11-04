@@ -8,6 +8,7 @@ public static class DependencyInjection
     public static IServiceCollection AddProjectServices(this IServiceCollection services)
     {
         services.AddScoped<IExampleEndpointsService, ExampleEndpointsService>();
+        services.AddScoped<IGitHubService, GitHubService>();
         return services;
     }
 }
