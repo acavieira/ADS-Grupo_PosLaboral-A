@@ -3,14 +3,9 @@
 GET {{GitDashBackend_HostAddress}}/weatherforecast/
 Accept: application/json
 
-###
 
-### Get GitHub Repositories (First call - will fetch from GitHub API)
+### Get GitHub Repositories 
+### (First call - will fetch from GitHub API)
+### (Second call - should return from cache)
 GET {{GitDashBackend_HostAddress}}/api/github/repositories
-Authorization: Bearer YOUR_GITHUB_TOKEN_HERE
-
-###
-
-### Get GitHub Repositories (Second call - should return from cache)
-GET {{GitDashBackend_HostAddress}}/api/github/repositories
-Authorization: Bearer YOUR_GITHUB_TOKEN_HERE
+Authorization: YOUR_GITHUB_TOKEN_HERE

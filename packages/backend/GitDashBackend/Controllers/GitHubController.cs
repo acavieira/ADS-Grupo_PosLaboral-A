@@ -1,4 +1,4 @@
-using GitDashBackend.Services;
+using GitDashBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GitDashBackend.Controllers;
@@ -20,7 +20,7 @@ public class GitHubController : ControllerBase
     /// <summary>
     /// Get user repositories from GitHub
     /// </summary>
-    /// <param name="authorization">GitHub Personal Access Token (with 'Bearer ' prefix or without)</param>
+    /// <param name="authorization">GitHub Personal Access Token (direct token without Bearer prefix)</param>
     /// <returns>List of user repositories with caching</returns>
     /// <response code="200">Returns the list of repositories</response>
     /// <response code="400">If the Authorization header is missing</response>
@@ -38,18 +38,13 @@ public class GitHubController : ControllerBase
             return BadRequest(new { error = "Authorization header with GitHub token is required" });
         }
 
-        // Remove "Bearer " prefix if present
-        var token = authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase) 
-            ? authorization.Substring(7) 
-            : authorization;
-
         try
         {
-            var repositories = await _gitHubService.GetUserRepositoriesAsync(token);
-            return Ok(new { 
-                count = repositories.Count(),
-                repositories,
-                cached = true
+            var repositories = await _gitHubService.GetUserRepositoriesAsync(authorization);
+            var repositoryDtos = repositories.ToList();
+            return Ok(new 
+            { 
+                count = repositoryDtos.Count(), repositories = repositoryDtos
             });
         }
         catch (Octokit.AuthorizationException)

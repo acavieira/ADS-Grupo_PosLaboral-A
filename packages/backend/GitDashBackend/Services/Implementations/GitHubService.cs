@@ -1,18 +1,23 @@
-using System.Text.Json;
-using Microsoft.Extensions.Caching.Distributed;
-using Octokit;
+using GitDashBackend.Accessors.Interfaces;
+using GitDashBackend.Domain.DTOs;
+using GitDashBackend.Services.Interfaces;
 
 namespace GitDashBackend.Services.Implementations;
 
 public class GitHubService : IGitHubService
 {
-    private readonly IDistributedCache _cache;
+    private readonly IGitHubAccessor _gitHubAccessor;
+    private readonly IRedisAccessor _redisAccessor;
     private readonly ILogger<GitHubService> _logger;
     private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(10);
 
-    public GitHubService(IDistributedCache cache, ILogger<GitHubService> logger)
+    public GitHubService(
+        IGitHubAccessor gitHubAccessor,
+        IRedisAccessor redisAccessor,
+        ILogger<GitHubService> logger)
     {
-        _cache = cache;
+        _gitHubAccessor = gitHubAccessor;
+        _redisAccessor = redisAccessor;
         _logger = logger;
     }
 
@@ -20,46 +25,22 @@ public class GitHubService : IGitHubService
     {
         var cacheKey = $"repos_{token.GetHashCode()}";
 
-        // Try to get from the cache
-        var cachedData = await _cache.GetStringAsync(cacheKey);
-        if (!string.IsNullOrEmpty(cachedData))
+        // Try to get from cache
+        var cachedData = await _redisAccessor.GetAsync<IEnumerable<RepositoryDto>>(cacheKey);
+        if (cachedData != null)
         {
             _logger.LogInformation("Returning repositories from cache");
-            return JsonSerializer.Deserialize<IEnumerable<RepositoryDto>>(cachedData) 
-                   ?? Enumerable.Empty<RepositoryDto>();
+            return cachedData;
         }
 
-        // If not in cache, fetch from GitHub API
-        _logger.LogInformation("Fetching repositories from GitHub API");
-        var client = new GitHubClient(new ProductHeaderValue("GitDashBackend"))
-        {
-            Credentials = new Credentials(token)
-        };
-
-        var repos = await client.Repository.GetAllForCurrent();
-        
-        var repositoryDtos = repos.Select(r => new RepositoryDto
-        {
-            Id = r.Id,
-            Name = r.Name,
-            FullName = r.FullName,
-            Description = r.Description,
-            HtmlUrl = r.HtmlUrl,
-            StargazersCount = r.StargazersCount,
-            ForksCount = r.ForksCount,
-            Language = r.Language ?? "",
-            CreatedAt = r.CreatedAt.DateTime,
-            UpdatedAt = r.UpdatedAt.DateTime
-        }).ToList();
+        // If not in cache, fetch from GitHub
+        _logger.LogInformation("Cache miss - fetching from GitHub API");
+        var repositories = await _gitHubAccessor.GetUserRepositoriesAsync(token);
 
         // Store in cache
-        var serializedData = JsonSerializer.Serialize(repositoryDtos);
-        var cacheOptions = new DistributedCacheEntryOptions
-        {
-            AbsoluteExpirationRelativeToNow = _cacheExpiration
-        };
-        await _cache.SetStringAsync(cacheKey, serializedData, cacheOptions);
+        var userRepositoriesAsync = repositories.ToList();
+        await _redisAccessor.SetAsync(cacheKey, userRepositoriesAsync, _cacheExpiration);
 
-        return repositoryDtos;
+        return userRepositoriesAsync;
     }
 }
