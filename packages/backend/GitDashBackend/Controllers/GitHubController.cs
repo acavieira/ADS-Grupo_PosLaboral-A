@@ -20,7 +20,7 @@ public class GitHubController : ControllerBase
     /// <summary>
     /// Get user repositories from GitHub
     /// </summary>
-    /// <param name="authorization">GitHub Personal Access Token</param>
+    /// <param name="authorization">GitHub Personal Access Token (direct token without Bearer prefix)</param>
     /// <returns>List of user repositories with caching</returns>
     [HttpGet("repositories")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
@@ -56,21 +56,20 @@ public class GitHubController : ControllerBase
     }
 
     /// <summary>
-    /// Get commits for a specific repository
+    /// Get commits for a specific repository using fullName as query parameter
     /// </summary>
-    /// <param name="owner">Repository owner username</param>
-    /// <param name="repo">Repository name</param>
+    /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="authorization">GitHub Personal Access Token</param>
     /// <returns>List of commits with caching</returns>
-    [HttpGet("repositories/{owner}/{repo}/commits")]
+    /// <example>GET /api/github/commits?fullName=acavieira/ADS-Grupo_PosLaboral-A</example>
+    [HttpGet("commits")]
     [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositoryCommits(
-        string owner, 
-        string repo, 
+        [FromQuery] string fullName,
         [FromHeader(Name = "Authorization")] string? authorization)
     {
         if (string.IsNullOrEmpty(authorization))
@@ -78,16 +77,25 @@ public class GitHubController : ControllerBase
             return BadRequest(new { error = "Authorization header with GitHub token is required" });
         }
 
+        if (string.IsNullOrEmpty(fullName) || !fullName.Contains('/'))
+        {
+            return BadRequest(new { error = "Invalid repository fullName format. Expected format: 'owner/repo'" });
+        }
+
         try
         {
-            var commits = await _gitHubService.GetRepositoryCommitsAsync(authorization, owner, repo);
+            var commits = await _gitHubService.GetRepositoryCommitsByFullNameAsync(authorization, fullName);
             var commitDtos = commits.ToList();
             return Ok(new 
             { 
-                repository = $"{owner}/{repo}",
+                repository = fullName,
                 count = commitDtos.Count, 
                 commits = commitDtos
             });
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(new { error = ex.Message });
         }
         catch (Octokit.AuthorizationException)
         {
@@ -95,13 +103,12 @@ public class GitHubController : ControllerBase
         }
         catch (Octokit.NotFoundException)
         {
-            return NotFound(new { error = $"Repository {owner}/{repo} not found" });
+            return NotFound(new { error = $"Repository '{fullName}' not found" });
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error fetching commits for {Owner}/{Repo}", owner, repo);
+            _logger.LogError(ex, "Error fetching commits for {FullName}", fullName);
             return StatusCode(500, new { error = "An error occurred while fetching commits" });
         }
     }
- 
 }

@@ -43,9 +43,19 @@ public class GitHubAccessor : IGitHubAccessor
         }).ToList();
     }
 
-    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsAsync(string token, string owner, string repo)
+    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
     {
-        _logger.LogInformation("Fetching commits for {Owner}/{Repo}", owner, repo);
+        _logger.LogInformation("Fetching commits for {FullName}", fullName);
+
+        // Parse fullName (format: "owner/repo")
+        var parts = fullName.Split('/');
+        if (parts.Length != 2)
+        {
+            throw new ArgumentException($"Invalid repository fullName format: {fullName}. Expected format: 'owner/repo'");
+        }
+
+        var owner = parts[0];
+        var repo = parts[1];
 
         var client = CreateClient(token);
         var commits = await client.Repository.Commit.GetAll(owner, repo);
@@ -62,5 +72,4 @@ public class GitHubAccessor : IGitHubAccessor
             TotalChanges = (c.Stats?.Additions ?? 0) + (c.Stats?.Deletions ?? 0)
         }).ToList();
     }
-
 }

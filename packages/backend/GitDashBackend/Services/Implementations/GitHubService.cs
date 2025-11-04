@@ -28,10 +28,10 @@ public class GitHubService : IGitHubService
         return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
     }
 
-    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsAsync(string token, string owner, string repo)
+    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
     {
-        var cacheKey = $"commits_{owner}_{repo}_{token.GetHashCode()}";
-        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCommitsAsync(token, owner, repo));
+        var cacheKey = $"commits_{fullName.Replace("/", "_")}_{token.GetHashCode()}";
+        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCommitsByFullNameAsync(token, fullName));
     }
     
     // Generic cache helper for collections
