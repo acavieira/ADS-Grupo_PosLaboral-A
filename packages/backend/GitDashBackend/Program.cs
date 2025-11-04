@@ -2,6 +2,15 @@ using GitDashBackend.Configurations;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Logging with timestamp
+builder.Logging.ClearProviders();
+builder.Logging.AddSimpleConsole(options =>
+{
+    options.TimestampFormat = "[yyyy-MM-dd HH:mm:ss] ";
+    options.UseUtcTimestamp = false;
+});
+
+
 // Add services to the container.
 builder.Services.AddControllers();
 
@@ -16,7 +25,7 @@ builder.Services.AddStackExchangeRedisCache(options =>
 builder.Services.Configure<GitHubSettings>(
     builder.Configuration.GetSection("GitHub"));
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+// OpenAPI
 builder.Services.AddOpenApi();
 
 // Add Swagger
@@ -27,22 +36,22 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "GitDash Backend API",
         Version = "v1",
-        Description = "API for GitDash - GitHub Dashboard with Redis Caching",
+        Description = "API for GitDash - GitHub Dashboard",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
-            Name = "GitDash Team",
+            Name = "GitDash Team - ADS-Grupo_PosLaboral-A",
             Url = new Uri("https://github.com/acavieira/ADS-Grupo_PosLaboral-A")
         }
     });
 
-    // Add JWT Authentication to Swagger
-    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    // Add GitHub Token Authentication (simple ApiKey)
+    options.AddSecurityDefinition("GitHubToken", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
     {
-        Description = "GitHub Personal Access Token. Example: 'ghp_yourTokenHere'",
+        Description = "GitHub Personal Access Token. Just paste your token directly (e.g., 'ghp_yourTokenHere')",
         Name = "Authorization",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "Bearer"
+        Scheme = "ApiKey"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -53,7 +62,7 @@ builder.Services.AddSwaggerGen(options =>
                 Reference = new Microsoft.OpenApi.Models.OpenApiReference
                 {
                     Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "Bearer"
+                    Id = "GitHubToken"
                 }
             },
             Array.Empty<string>()
@@ -61,7 +70,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Register custom services
+// Register custom services 
 builder.Services.AddProjectServices();
 
 // Add CORS for frontend

@@ -1,9 +1,4 @@
-namespace GitDashBackend.Services;
-
-public interface IGitHubService
-{
-    Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token);
-}
+namespace GitDashBackend.Domain.DTOs;
 
 public class RepositoryDto
 {
