@@ -1,0 +1,39 @@
+# Build output
+GitDashBackend/bin/
+GitDashBackend/obj/
+GitDashBackend/out/
+GitDashBackend/artifacts/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+
+# IIS/VS settings
+.vs/
+*.vssscc
+*.vspscc
+
+# NuGet
+*.nupkg
+packages/
+
+# Dotnet watch
+**/*.dotnetwatch.json
+
+# Logs & crash dumps
+*.log
+mono_crash.*
+
+# Temp files
+*.tmp
+*.temp
+*.bak
+~$*
+
+# Scaffolding
+GitDashBackend/ScaffoldingReadMe.txt
+
+# IDE-specific folders
+.vscode/
+.idea/
