@@ -13,15 +13,19 @@ public class GitHubAccessor : IGitHubAccessor
         _logger = logger;
     }
 
+    private GitHubClient CreateClient(string token)
+    {
+        return new GitHubClient(new ProductHeaderValue("GitDashBackend"))
+        {
+            Credentials = new Credentials(token)
+        };
+    }
+
     public async Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token)
     {
         _logger.LogInformation("Fetching repositories from GitHub API");
 
-        var client = new GitHubClient(new ProductHeaderValue("GitDashBackend"))
-        {
-            Credentials = new Credentials(token)
-        };
-
+        var client = CreateClient(token);
         var repos = await client.Repository.GetAllForCurrent();
 
         return repos.Select(r => new RepositoryDto
@@ -38,4 +42,25 @@ public class GitHubAccessor : IGitHubAccessor
             UpdatedAt = r.UpdatedAt.DateTime
         }).ToList();
     }
+
+    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsAsync(string token, string owner, string repo)
+    {
+        _logger.LogInformation("Fetching commits for {Owner}/{Repo}", owner, repo);
+
+        var client = CreateClient(token);
+        var commits = await client.Repository.Commit.GetAll(owner, repo);
+
+        return commits.Select(c => new CommitDto
+        {
+            Sha = c.Sha,
+            Message = c.Commit.Message,
+            AuthorName = c.Commit.Author.Name,
+            AuthorEmail = c.Commit.Author.Email,
+            Date = c.Commit.Author.Date.DateTime,
+            Additions = c.Stats?.Additions ?? 0,
+            Deletions = c.Stats?.Deletions ?? 0,
+            TotalChanges = (c.Stats?.Additions ?? 0) + (c.Stats?.Deletions ?? 0)
+        }).ToList();
+    }
+
 }

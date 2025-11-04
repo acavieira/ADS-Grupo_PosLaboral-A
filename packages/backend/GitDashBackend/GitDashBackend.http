@@ -1,4 +1,8 @@
 @GitDashBackend_HostAddress = http://localhost:5053
+@GitHubToken = YOUR_GITHUB_TOKEN_HERE
+@Owner = acavieira
+@Repo = ADS-Grupo_PosLaboral-A
+
 
 GET {{GitDashBackend_HostAddress}}/weatherforecast/
 Accept: application/json
@@ -8,4 +12,8 @@ Accept: application/json
 ### (First call - will fetch from GitHub API)
 ### (Second call - should return from cache)
 GET {{GitDashBackend_HostAddress}}/api/github/repositories
+Authorization: YOUR_GITHUB_TOKEN_HERE
+
+### Get Repository Commits
+GET {{GitDashBackend_HostAddress}}/api/github/repositories/{{Owner}}/{{Repo}}/commits
 Authorization: YOUR_GITHUB_TOKEN_HERE

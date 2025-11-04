@@ -1,3 +1,4 @@
+
 using GitDashBackend.Accessors.Interfaces;
 using GitDashBackend.Domain.DTOs;
 using GitDashBackend.Services.Interfaces;
@@ -9,7 +10,7 @@ public class GitHubService : IGitHubService
     private readonly IGitHubAccessor _gitHubAccessor;
     private readonly IRedisAccessor _redisAccessor;
     private readonly ILogger<GitHubService> _logger;
-    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(10);
+    private readonly TimeSpan _cacheExpiration = TimeSpan.FromMinutes(30);
 
     public GitHubService(
         IGitHubAccessor gitHubAccessor,
@@ -24,23 +25,47 @@ public class GitHubService : IGitHubService
     public async Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token)
     {
         var cacheKey = $"repos_{token.GetHashCode()}";
+        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
+    }
 
-        // Try to get from cache
-        var cachedData = await _redisAccessor.GetAsync<IEnumerable<RepositoryDto>>(cacheKey);
+    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsAsync(string token, string owner, string repo)
+    {
+        var cacheKey = $"commits_{owner}_{repo}_{token.GetHashCode()}";
+        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCommitsAsync(token, owner, repo));
+    }
+    
+    // Generic cache helper for collections
+    private async Task<IEnumerable<T>> GetOrFetchAsync<T>(string cacheKey, Func<Task<IEnumerable<T>>> fetchFunc)
+    {
+        var cachedData = await _redisAccessor.GetAsync<IEnumerable<T>>(cacheKey);
         if (cachedData != null)
         {
-            _logger.LogInformation("Returning repositories from cache");
+            _logger.LogInformation("Returning data from cache for key: {CacheKey}", cacheKey);
             return cachedData;
         }
 
-        // If not in cache, fetch from GitHub
-        _logger.LogInformation("Cache miss - fetching from GitHub API");
-        var repositories = await _gitHubAccessor.GetUserRepositoriesAsync(token);
+        _logger.LogInformation("Cache miss - fetching from GitHub API for key: {CacheKey}", cacheKey);
+        var data = await fetchFunc();
+        var dataList = data.ToList();
+        
+        await _redisAccessor.SetAsync(cacheKey, dataList, _cacheExpiration);
+        return dataList;
+    }
 
-        // Store in cache
-        var userRepositoriesAsync = repositories.ToList();
-        await _redisAccessor.SetAsync(cacheKey, userRepositoriesAsync, _cacheExpiration);
+    // Generic cache helper for single objects
+    private async Task<T> GetOrFetchSingleAsync<T>(string cacheKey, Func<Task<T>> fetchFunc) where T : class
+    {
+        var cachedData = await _redisAccessor.GetAsync<T>(cacheKey);
+        if (cachedData != null)
+        {
+            _logger.LogInformation("Returning data from cache for key: {CacheKey}", cacheKey);
+            return cachedData;
+        }
 
-        return userRepositoriesAsync;
+        _logger.LogInformation("Cache miss - fetching from GitHub API for key: {CacheKey}", cacheKey);
+        var data = await fetchFunc();
+        
+        await _redisAccessor.SetAsync(cacheKey, data, _cacheExpiration);
+        return data;
     }
 }
