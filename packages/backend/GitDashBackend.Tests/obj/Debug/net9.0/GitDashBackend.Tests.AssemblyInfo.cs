@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("GitDashBackend.Tests")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+b6a8b37a47e0e07e3e2d902e9b6c57588996210e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3b8b375c4ff7937a5b19ab96639b300c54573339")]
 [assembly: System.Reflection.AssemblyProductAttribute("GitDashBackend.Tests")]
 [assembly: System.Reflection.AssemblyTitleAttribute("GitDashBackend.Tests")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
