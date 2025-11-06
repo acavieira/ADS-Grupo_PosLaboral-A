@@ -47,22 +47,13 @@ public class GitHubAccessor : IGitHubAccessor
     {
         _logger.LogInformation("Fetching commits for {FullName}", fullName);
 
-        // Parse fullName (format: "owner/repo")
-        var parts = fullName.Split('/');
-        if (parts.Length != 2)
-        {
-            throw new ArgumentException($"Invalid repository fullName format: {fullName}. Expected format: 'owner/repo'");
-        }
-
-        var owner = parts[0];
-        var repo = parts[1];
+        var (owner, repo) = ParseFullName(fullName);
 
         var client = CreateClient(token);
         var commits = await client.Repository.Commit.GetAll(owner, repo);
 
         return commits.Select(c => new CommitDto
         {
-            Sha = c.Sha,
             Message = c.Commit.Message,
             AuthorName = c.Commit.Author.Name,
             AuthorEmail = c.Commit.Author.Email,
@@ -72,4 +63,75 @@ public class GitHubAccessor : IGitHubAccessor
             TotalChanges = (c.Stats?.Additions ?? 0) + (c.Stats?.Deletions ?? 0)
         }).ToList();
     }
+    
+    
+    public async Task<IEnumerable<CollaboratorDto>> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange)
+    {
+        var (owner, repo) = ParseFullName(fullName);
+        _logger.LogInformation("Fetching collaborators for {FullName}", fullName);
+
+        var client = CreateClient(token);
+
+        var collaborators = await client.Repository.Collaborator.GetAll(owner, repo);
+
+        var result = new List<CollaboratorDto>();
+        foreach (var collaborator in collaborators)
+        {
+            var login = collaborator.Login;
+
+            var commitCount = (await client.Repository.Commit.GetAll(owner, repo, new CommitRequest
+            {
+                Author = login,
+                Since = GetStartDateFromTimeRange(timeRange)
+            })).Count;
+
+            var pullRequests = (await client.Search.SearchIssues(new SearchIssuesRequest
+            {
+                Type = IssueTypeQualifier.PullRequest,
+                Author = login,
+                Repos = { $"{owner}/{repo}" }
+            })).TotalCount;
+            
+            var issues = (await client.Search.SearchIssues(new SearchIssuesRequest
+            {
+                Type = IssueTypeQualifier.Issue,
+                Author = login,
+                Repos = { $"{owner}/{repo}" }
+            })).TotalCount;
+
+            result.Add(new CollaboratorDto
+            {
+                Login = login,
+                AvatarUrl = collaborator.AvatarUrl,
+                Role = collaborator.Permissions.Admin ? "admin" : collaborator.Permissions.Push ? "write" : "read",
+                Commits = commitCount,
+                PullRequests = pullRequests,
+                Issues = issues
+            });
+        }
+
+        return result;
+    }
+
+    private static DateTime GetStartDateFromTimeRange(string timeRange)
+    {
+        return timeRange switch
+        {
+            "1 week" => DateTime.UtcNow.AddDays(-7),
+            "1 month" => DateTime.UtcNow.AddMonths(-1),
+            "3 months" => DateTime.UtcNow.AddMonths(-3),
+            _ => throw new ArgumentException("Invalid time range. Accepted values: '1 week', '1 month', '3 months'")
+        };
+    }
+    
+    private (string owner, string repo) ParseFullName(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName) || !fullName.Contains('/'))
+        {
+            throw new ArgumentException($"Invalid repository fullName format: {fullName}. Expected format: 'owner/repo'");
+        }
+
+        var parts = fullName.Split('/');
+        return (parts[0], parts[1]);
+    }    
 }

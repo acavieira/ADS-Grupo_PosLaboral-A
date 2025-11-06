@@ -6,4 +6,5 @@ public interface IGitHubAccessor
 {
     Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token);
     Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName);
+    Task<IEnumerable<CollaboratorDto>> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange);
 }
