@@ -28,19 +28,25 @@ public class GitHubAccessor : IGitHubAccessor
         var client = CreateClient(token);
         var repos = await client.Repository.GetAllForCurrent();
 
-        return repos.Select(r => new RepositoryDto
+        var result = new List<RepositoryDto>();
+
+        foreach (var repo in repos)
         {
-            Id = r.Id,
-            Name = r.Name,
-            FullName = r.FullName,
-            Description = r.Description,
-            HtmlUrl = r.HtmlUrl,
-            StargazersCount = r.StargazersCount,
-            ForksCount = r.ForksCount,
-            Language = r.Language ?? string.Empty,
-            CreatedAt = r.CreatedAt.DateTime,
-            UpdatedAt = r.UpdatedAt.DateTime
-        }).ToList();
+            // Busca as linguagens do repositório
+            var languages = await client.Repository.GetAllLanguages(repo.Owner.Login, repo.Name);
+
+            result.Add(new RepositoryDto
+            {
+                FullName = repo.FullName,
+                Description = repo.Description ?? string.Empty,
+                IsPrivate = repo.Private,
+                Starred = repo.StargazersCount,
+                Forked = repo.ForksCount,
+                Languages = languages.Select(l => l.Name).ToList()
+            });
+        }
+
+        return result;
     }
 
     public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
