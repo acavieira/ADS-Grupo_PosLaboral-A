@@ -54,7 +54,6 @@ public class GitHubAccessor : IGitHubAccessor
 
         return commits.Select(c => new CommitDto
         {
-            Sha = c.Sha,
             Message = c.Commit.Message,
             AuthorName = c.Commit.Author.Name,
             AuthorEmail = c.Commit.Author.Email,
