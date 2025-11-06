@@ -2,14 +2,10 @@ namespace GitDashBackend.Domain.DTOs;
 
 public class RepositoryDto
 {
-    public long Id { get; set; }
-    public string Name { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string? Description { get; set; }
-    public string HtmlUrl { get; set; } = string.Empty;
-    public int StargazersCount { get; set; }
-    public int ForksCount { get; set; }
-    public string Language { get; set; } = string.Empty;
-    public DateTime CreatedAt { get; set; }
-    public DateTime UpdatedAt { get; set; }
+    public string FullName { get; set; } = string.Empty; // all communication based on it
+    public string Description { get; set; } = string.Empty;
+    public bool IsPrivate { get; set; } // Indicates if the repository is private
+    public int Starred { get; set; } // Stargazer count
+    public int Forked { get; set; } // Fork count
+    public List<string> Languages { get; set; } = new(); // List of languages
 }
