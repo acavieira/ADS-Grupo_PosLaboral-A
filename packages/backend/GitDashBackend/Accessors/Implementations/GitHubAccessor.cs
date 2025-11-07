@@ -21,21 +21,22 @@ public class GitHubAccessor : IGitHubAccessor
         };
     }
 
-    public async Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token)
+    public async Task<RepositoriesDto> GetUserRepositoriesAsync(string token)
     {
         _logger.LogInformation("Fetching repositories from GitHub API");
 
         var client = CreateClient(token);
         var repos = await client.Repository.GetAllForCurrent();
 
-        var result = new List<RepositoryDto>();
+        //var result = new List<RepositoryDto>();
+        RepositoriesDto repositoriesDto = new ();
 
         foreach (var repo in repos)
         {
             // Busca as linguagens do repositório
             var languages = await client.Repository.GetAllLanguages(repo.Owner.Login, repo.Name);
 
-            result.Add(new RepositoryDto
+            repositoriesDto.repositories.Add(new RepositoryDto
             {
                 FullName = repo.FullName,
                 Description = repo.Description ?? string.Empty,
@@ -44,9 +45,11 @@ public class GitHubAccessor : IGitHubAccessor
                 Forked = repo.ForksCount,
                 Languages = languages.Select(l => l.Name).ToList()
             });
+
+            repositoriesDto.count++;
         }
 
-        return result;
+        return repositoriesDto;
     }
 
     public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
