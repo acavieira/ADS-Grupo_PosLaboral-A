@@ -24,7 +24,7 @@ public class GitHubController : ControllerBase
     /// <param name="authorization">GitHub Personal Access Token (direct token without Bearer prefix)</param>
     /// <returns>List of user repositories with caching</returns>
     [HttpGet("repositories")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RepositoriesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
@@ -52,6 +52,7 @@ public class GitHubController : ControllerBase
         }
     }
 
+
     /// <summary>
     /// Get commits for a specific repository using fullName as a query parameter
     /// </summary>
@@ -60,7 +61,7 @@ public class GitHubController : ControllerBase
     /// <returns>List of commits with caching</returns>
     /// <example>GET /api/github/commits?fullName=acavieira/ADS-Grupo_PosLaboral-A</example>
     [HttpGet("commits")]
-    [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CommitsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
@@ -81,13 +82,12 @@ public class GitHubController : ControllerBase
 
         try
         {
-            var commits = await _gitHubService.GetRepositoryCommitsByFullNameAsync(authorization, fullName);
-            var commitDtos = commits.ToList();
+            CommitsDto commits = await _gitHubService.GetRepositoryCommitsByFullNameAsync(authorization, fullName);
             return Ok(new 
             { 
                 repository = fullName,
-                count = commitDtos.Count, 
-                commits = commitDtos
+                count = commits.count, 
+                commits = commits.commits
             });
         }
         catch (ArgumentException ex)
@@ -109,7 +109,6 @@ public class GitHubController : ControllerBase
         }
     }
     
-    
     /// <summary>
     /// Get collaborators for a specific repository using fullName and timeRange as part of the route.
     /// </summary>
@@ -118,9 +117,10 @@ public class GitHubController : ControllerBase
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
     /// <returns>List of collaborators for the repository with their respective statistics.</returns>
     [HttpGet("collaborators/{fullName}/{timeRange}")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositoryCollaborators(
         [FromHeader] string authorization,
@@ -135,8 +135,14 @@ public class GitHubController : ControllerBase
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            var collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
-            return Ok(collaborators);
+            CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
+            
+            return Ok(new 
+            {
+                repository = decodedFullName,
+                count = collaborators.count,
+                collaborators = collaborators.collaborators
+            });
         }
         catch (ArgumentException ex)
         {
@@ -157,6 +163,4 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching collaborators." });
         }
     }
-    
-    
 }
