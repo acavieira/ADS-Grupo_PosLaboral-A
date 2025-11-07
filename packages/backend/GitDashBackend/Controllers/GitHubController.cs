@@ -1,3 +1,4 @@
+using GitDashBackend.Domain.DTOs;
 using GitDashBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 
@@ -36,13 +37,9 @@ public class GitHubController : ControllerBase
 
         try
         {
-            var repositories = await _gitHubService.GetUserRepositoriesAsync(authorization);
-            var repositoryDtos = repositories.ToList();
-            return Ok(new 
-            { 
-                count = repositoryDtos.Count, 
-                repositories = repositoryDtos
-            });
+            RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(authorization);
+
+            return Ok(repositories);
         }
         catch (Octokit.AuthorizationException)
         {

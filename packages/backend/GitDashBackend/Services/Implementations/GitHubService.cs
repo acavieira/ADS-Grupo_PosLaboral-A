@@ -22,10 +22,10 @@ public class GitHubService : IGitHubService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token)
+    public async Task<RepositoriesDto> GetUserRepositoriesAsync(string token)
     {
         var cacheKey = $"repos_{token.GetHashCode()}";
-        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
     }
 
     public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
@@ -74,4 +74,6 @@ public class GitHubService : IGitHubService
         await _redisAccessor.SetAsync(cacheKey, data, _cacheExpiration);
         return data;
     }
+
+
 }
