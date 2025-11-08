@@ -52,7 +52,7 @@ public class GitHubAccessor : IGitHubAccessor
         return repositoriesDto;
     }
 
-    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
+    public async Task<CommitsDto> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
     {
         _logger.LogInformation("Fetching commits for {FullName}", fullName);
 
@@ -61,20 +61,28 @@ public class GitHubAccessor : IGitHubAccessor
         var client = CreateClient(token);
         var commits = await client.Repository.Commit.GetAll(owner, repo);
 
-        return commits.Select(c => new CommitDto
+        var commitsDto = new CommitsDto();
+        
+        foreach (var commit in commits)
         {
-            Message = c.Commit.Message,
-            AuthorName = c.Commit.Author.Name,
-            AuthorEmail = c.Commit.Author.Email,
-            Date = c.Commit.Author.Date.DateTime,
-            Additions = c.Stats?.Additions ?? 0,
-            Deletions = c.Stats?.Deletions ?? 0,
-            TotalChanges = (c.Stats?.Additions ?? 0) + (c.Stats?.Deletions ?? 0)
-        }).ToList();
+            commitsDto.commits.Add(new CommitDto
+            {
+                Message = commit.Commit.Message,
+                AuthorName = commit.Commit.Author.Name,
+                AuthorEmail = commit.Commit.Author.Email,
+                Date = commit.Commit.Author.Date.DateTime,
+                Additions = commit.Stats?.Additions ?? 0,
+                Deletions = commit.Stats?.Deletions ?? 0,
+                TotalChanges = (commit.Stats?.Additions ?? 0) + (commit.Stats?.Deletions ?? 0)
+            });
+            
+            commitsDto.count++;
+        }
+
+        return commitsDto;
     }
     
-    
-    public async Task<IEnumerable<CollaboratorDto>> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange)
+    public async Task<CollaboratorsDto> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange)
     {
         var (owner, repo) = ParseFullName(fullName);
         _logger.LogInformation("Fetching collaborators for {FullName}", fullName);
@@ -83,7 +91,8 @@ public class GitHubAccessor : IGitHubAccessor
 
         var collaborators = await client.Repository.Collaborator.GetAll(owner, repo);
 
-        var result = new List<CollaboratorDto>();
+        var collaboratorsDto = new CollaboratorsDto();
+        
         foreach (var collaborator in collaborators)
         {
             var login = collaborator.Login;
@@ -108,7 +117,7 @@ public class GitHubAccessor : IGitHubAccessor
                 Repos = { $"{owner}/{repo}" }
             })).TotalCount;
 
-            result.Add(new CollaboratorDto
+            collaboratorsDto.collaborators.Add(new CollaboratorDto
             {
                 Login = login,
                 AvatarUrl = collaborator.AvatarUrl,
@@ -117,9 +126,10 @@ public class GitHubAccessor : IGitHubAccessor
                 PullRequests = pullRequests,
                 Issues = issues
             });
+            collaboratorsDto.count++;
         }
 
-        return result;
+        return collaboratorsDto;
     }
 
     private static DateTime GetStartDateFromTimeRange(string timeRange)
