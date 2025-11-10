@@ -39,6 +39,11 @@ public class GitHubService : IGitHubService
         return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCollaboratorsAsync(token, fullName, timeRange));
     }
 
+    public async Task<RepoOverviewStatsDto> GetRepositoryStatsAsync(string token, string fullName, string timeRange)
+    {
+        return await _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange);
+    }
+
     // Generic cache helper for collections
     private async Task<IEnumerable<T>> GetOrFetchAsync<T>(string cacheKey, Func<Task<IEnumerable<T>>> fetchFunc)
     {
