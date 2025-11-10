@@ -163,4 +163,57 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching collaborators." });
         }
     }
+    
+    /// <summary>
+    /// Get all the view with general repository statistics.
+    /// </summary>
+    /// <param name="authorization">GitHub Personal Access Token</param>
+    /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
+    /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
+    /// <returns>All the view with general repository statistics.</returns>
+    [HttpGet("stats/{fullName}/{timeRange}")]
+    [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<IActionResult> GetRepoOverviewStats(
+        [FromHeader] string authorization,
+        [FromRoute] string fullName,
+        [FromRoute] string timeRange)
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(authorization))
+            {
+                return Unauthorized("Authorization header is required.");
+            }
+
+            var decodedFullName = Uri.UnescapeDataString(fullName);
+            
+            //CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
+            
+            RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(authorization, decodedFullName, timeRange);
+            
+            return Ok(statsOverview);
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning("Bad request when querying statistics: {Message}", ex.Message);
+            return BadRequest(new { error = ex.Message });
+        }
+        catch (Octokit.AuthorizationException)
+        {
+            return Unauthorized(new { error = "Invalid GitHub token" });
+        }
+        catch (Octokit.NotFoundException)
+        {
+            return NotFound(new { error = $"Repository '{fullName}' not found or invalid." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error fetching statistics for {FullName}", fullName);
+            return StatusCode(500, new { error = "An error occurred while fetching statistics." });
+        }
+    }
 }
