@@ -8,7 +8,7 @@
         </v-avatar>
 
         <!-- Title -->
-        <h2 class="text-h5 mb-2">GitHub Dashboard</h2>
+        <h2 class="text-h5 mb-2">GitDash</h2>
 
         <!-- Description -->
         <p class="mb-6">
