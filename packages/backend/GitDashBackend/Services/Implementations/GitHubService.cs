@@ -41,7 +41,8 @@ public class GitHubService : IGitHubService
 
     public async Task<RepoOverviewStatsDto> GetRepositoryStatsAsync(string token, string fullName, string timeRange)
     {
-        return await _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange);
+        var cacheKey = $"stats_{fullName.Replace("/", "_")}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange));
     }
 
     // Generic cache helper for collections
