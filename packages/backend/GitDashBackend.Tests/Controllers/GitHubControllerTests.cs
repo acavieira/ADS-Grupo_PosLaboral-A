@@ -177,5 +177,134 @@ namespace GitDashBackend.Tests.Controllers
             var error = Assert.IsType<ObjectResult>(result);
             Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
         }
+        
+        // -------------------------------
+        // GetRepoOverviewStats Tests
+        // -------------------------------
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldReturnUnauthorized_WhenTokenMissing()
+        {
+            // Arrange
+            // No arrangement needed, token is passed directly
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats("", "owner/repo", "1 week");
+
+            // Assert
+            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+            // You could also assert the message:
+            // Assert.Equal("Authorization header is required.", (unauthorizedResult.Value as dynamic).error);
+        }
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldReturnOk_WhenStatsFound()
+        {
+            // Arrange
+            var fakeStats = new RepoOverviewStatsDto(); // Assuming this is your DTO class
+            const string token = "valid-token";
+            const string fullName = "owner/repo";
+            const string timeRange = "1 week";
+
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, fullName, timeRange))
+                .Returns(Task.FromResult(fakeStats));
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
+            Assert.Same(fakeStats, okResult.Value); // Verify the returned object is the one from the service
+        }
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldReturnBadRequest_WhenArgumentException()
+        {
+            // Arrange
+            const string token = "valid-token";
+            const string fullName = "owner/repo";
+            const string timeRange = "1 week";
+            const string errorMessage = "Bad argument";
+
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, fullName, timeRange))
+                .ThrowsAsync(new ArgumentException(errorMessage));
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+
+            // Assert
+            var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badRequestResult.StatusCode);
+            // You can assert the error message from the exception is passed through
+            // Assert.Equal(errorMessage, (badRequestResult.Value as dynamic).error);
+        }
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldReturnUnauthorized_WhenTokenInvalid()
+        {
+            // Arrange
+            const string token = "invalid-token";
+            const string fullName = "owner/repo";
+            const string timeRange = "1 week";
+
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, fullName, timeRange))
+                .ThrowsAsync(new Octokit.AuthorizationException());
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+
+            // Assert
+            var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorizedResult.StatusCode);
+            // Assert.Equal("Invalid GitHub token", (unauthorizedResult.Value as dynamic).error);
+        }
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldReturnInternalServerError_WhenUnhandledException()
+        {
+            // Arrange
+            const string token = "valid-token";
+            const string fullName = "owner/repo";
+            const string timeRange = "1 week";
+
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, fullName, timeRange))
+                .ThrowsAsync(new Exception("Unexpected error"));
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+
+            // Assert
+            var errorResult = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status500InternalServerError, errorResult.StatusCode);
+            // Assert.Equal("An error occurred while fetching statistics.", (errorResult.Value as dynamic).error);
+        }
+
+        [Fact]
+        public async Task GetRepoOverviewStats_ShouldDecodeFullName_WhenCalled()
+        {
+            // Arrange
+            var fakeStats = new RepoOverviewStatsDto();
+            const string token = "valid-token";
+            const string encodedName = "owner%2Frepo"; // URL-encoded "owner/repo"
+            const string decodedName = "owner/repo";   // The expected decoded string
+            const string timeRange = "1 week";
+
+            // IMPORTANT: Configure the mock to expect the *decoded* name
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, decodedName, timeRange))
+                .Returns(Task.FromResult(fakeStats));
+
+            // Act
+            var result = await _controller.GetRepoOverviewStats(token, encodedName, timeRange);
+
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            Assert.Equal(StatusCodes.Status200OK, okResult.StatusCode);
+
+            // Verify the service was called with the correctly decoded name
+            A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, decodedName, timeRange))
+                .MustHaveHappenedOnceExactly();
+        }
     }
 }
