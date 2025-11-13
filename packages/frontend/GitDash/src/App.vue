@@ -1,3 +1,4 @@
+<!--
 <template>
   <v-app>
     <v-main class="pa-6">
@@ -13,7 +14,7 @@
           <v-divider class="my-6" />
           <DemoCoreApi />
         </div>
-        <!-- Buttons -->
+        <!-- Buttons -
         <v-row class="mb-6" align="center" justify="space-around">
           <v-btn color="primary">Primary</v-btn>
           <v-btn color="secondary">Secondary</v-btn>
@@ -23,7 +24,7 @@
         </v-row>
 
 
-        <!-- Card -->
+        <!-- Card 
         <v-card class="mx-auto mb-6" max-width="400">
           <v-card-title>Sample Card</v-card-title>
           <v-card-text>
@@ -35,7 +36,7 @@
         </v-card>
 
 
-        <!-- Dialog -->
+        <!-- Dialog 
         <v-dialog v-model="dialog" width="400">
           <v-card>
             <v-card-title>Dialog Example</v-card-title>
@@ -49,7 +50,7 @@
         </v-dialog>
 
 
-        <!-- Form Example -->
+        <!-- Form Example 
         <v-card class="pa-4" max-width="400">
           <v-card-title>Simple Form</v-card-title>
           <v-card-text>
@@ -62,7 +63,7 @@
         </v-card>
 
 
-        <!-- Snackbar -->
+        <!-- Snackbar 
         <v-snackbar v-model="snackbar" color="success" timeout="2000">
           Form submitted successfully!
         </v-snackbar>
@@ -70,10 +71,10 @@
     </v-main>
   </v-app>
 </template>
+-->
 
-
-<script setup lang="ts">
-import { ref } from 'vue'
+<!--<script setup lang="ts">
+/*import { ref } from 'vue'
 import DemoButton from './components/DemoButton.vue'
 import DemoCoreToggle from './components/DemoCoreToggle.vue'
 import DemoCoreApi from './components/DemoCoreApi.vue'
@@ -99,6 +100,22 @@ function submitForm() {
 h1 {
   text-align: center;
 }
+</style>*/-->
+
+<template>
+  <v-app>
+    <v-main>
+      <router-view />
+    </v-main>
+  </v-app>
+</template>
+
+<script setup lang="ts">
+// App.vue não precisa de código extra por enquanto
+</script>
+
+<style>
+/* estilos globais se quiseres */
 </style>
 
 
