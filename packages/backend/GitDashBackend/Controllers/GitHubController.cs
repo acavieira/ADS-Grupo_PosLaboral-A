@@ -1,5 +1,7 @@
-using GitDashBackend.Domain.DTOs;
+﻿using GitDashBackend.Domain.DTOs;
 using GitDashBackend.Services.Interfaces;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GitDashBackend.Controllers;
@@ -18,32 +20,40 @@ public class GitHubController : ControllerBase
         _logger = logger;
     }
 
+
     /// <summary>
-    /// Get user repositories from GitHub
+    /// Retrieves the authenticated user's GitHub repositories.
+    /// Uses the GitHub OAuth access token stored in the authentication cookie
+    /// (saved automatically during the OAuth login flow).
     /// </summary>
-    /// <param name="authorization">GitHub Personal Access Token (direct token without Bearer prefix)</param>
-    /// <returns>List of user repositories with caching</returns>
+    /// <returns>List of user repositories.</returns>
+    [Authorize]
     [HttpGet("repositories")]
     [ProducesResponseType(typeof(RepositoriesDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetRepositories([FromHeader(Name = "Authorization")] string? authorization)
+    public async Task<IActionResult> GetRepositories()
     {
-        if (string.IsNullOrEmpty(authorization))
+        // Take token from the same place as /api/github/test
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+
+        if (string.IsNullOrEmpty(accessToken))
         {
-            return BadRequest(new { error = "Authorization header with GitHub token is required" });
+            // user is not authenticated via GitHub or token not saved
+            return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
         }
 
         try
         {
-            RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(authorization);
+            // pass token to your service like before
+            RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(accessToken);
 
             return Ok(repositories);
         }
         catch (Octokit.AuthorizationException)
         {
-            return Unauthorized(new { error = "Invalid GitHub token" });
+            return Unauthorized(new { error = "Invalid or expired GitHub token" });
         }
         catch (Exception ex)
         {

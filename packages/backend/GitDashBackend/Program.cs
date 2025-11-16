@@ -1,4 +1,9 @@
-using GitDashBackend.Configurations;
+﻿using GitDashBackend.Configurations;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authentication.OAuth;
+using System.Net.Http.Headers;
+using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -13,6 +18,68 @@ builder.Logging.AddSimpleConsole(options =>
 
 // Add services to the container.
 builder.Services.AddControllers();
+
+
+// === GitHub OAuth Authentication ===
+builder.Services
+    .AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = "GitHub";
+    })
+    .AddCookie(options =>
+    {
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.None;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+    })
+    .AddOAuth("GitHub", options =>
+    {
+        options.ClientId = builder.Configuration["GitHub:ClientId"];
+        options.ClientSecret = builder.Configuration["GitHub:ClientSecret"];
+
+        // This must match the callback URL in the GitHub OAuth App
+        options.CallbackPath = new PathString("/signin-github");
+
+        options.AuthorizationEndpoint = "https://github.com/login/oauth/authorize";
+        options.TokenEndpoint = "https://github.com/login/oauth/access_token";
+        options.UserInformationEndpoint = "https://api.github.com/user";
+
+        options.SaveTokens = true;
+
+        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.NameIdentifier, "id");
+        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Name, "login");
+        options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Email, "email");
+
+        options.Events = new OAuthEvents
+        {
+            OnCreatingTicket = async context =>
+            {
+
+                // Load GitHub user info
+                var request = new HttpRequestMessage(HttpMethod.Get, context.Options.UserInformationEndpoint);
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+                request.Headers.UserAgent.ParseAdd("GitDashBackend"); // GitHub requires User-Agent
+                request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", context.AccessToken);
+
+                var response = await context.Backchannel.SendAsync(request);
+                response.EnsureSuccessStatusCode();
+
+                using var user = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+                context.RunClaimActions(user.RootElement);
+
+                if (!string.IsNullOrEmpty(context.AccessToken))
+                {
+                    context.Identity!.AddClaim(
+                        new System.Security.Claims.Claim("github_access_token", context.AccessToken));
+                }
+            }
+        };
+    });
+
+
+
 
 // Configure Redis Cache
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -74,13 +141,17 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddProjectServices();
 
 // Add CORS for frontend
+var frontendOrigin = builder.Configuration["FrontendOrigin"]
+                     ?? "http://localhost:5173";
+
 builder.Services.AddCors(options =>
 {
-    options.AddDefaultPolicy(policy =>
+    options.AddPolicy("Frontend", policy =>
     {
-        policy.AllowAnyOrigin()
-            .AllowAnyHeader()
-            .AllowAnyMethod();
+        policy.WithOrigins(frontendOrigin)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials();
     });
 });
 
@@ -100,8 +171,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseCors();
-
+app.UseCors("Frontend");
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
