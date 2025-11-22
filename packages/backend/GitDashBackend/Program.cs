@@ -1,11 +1,21 @@
 ﻿using GitDashBackend.Configurations;
+using GitDashBackend.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
+using Microsoft.EntityFrameworkCore;
 using System.Net.Http.Headers;
 using System.Text.Json;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// 1. Get the connection string
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+
+// 2. Add the DbContext to the services
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(connectionString)); // <-- Tells EF Core to use Npgsql
+
 
 // Configure Logging with timestamp
 builder.Logging.ClearProviders();
@@ -77,7 +87,7 @@ builder.Services
             }
         };
     });
-
+    
 
 
 
