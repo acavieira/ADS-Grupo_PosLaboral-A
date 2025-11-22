@@ -14,8 +14,11 @@ services:
     container_name: postgres
     environment:
       POSTGRES_USER: exampleuser
-      POSTGRES_PASSWORD: examplepassword
-      POSTGRES_DB: gitdash
+      POSTGRES_PASSWORD: examplepassword123
+      POSTGRES_DB: gitdashdb
+    volumes:
+      #- ./.docker/database:/var/lib/postgresql/data
+      - ./packages/database:/docker-entrypoint-initdb.d
     ports:
       - "5432:5432"
     networks:
