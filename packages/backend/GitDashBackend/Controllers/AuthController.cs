@@ -3,12 +3,22 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System;
 using System.Threading.Tasks;
+using GitDashBackend.Data;
+using GitDashBackend.Models;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace GitDashBackend.Controllers;
 
 [ApiController]
 public class AuthController : ControllerBase
 {
+    private readonly AppDbContext _context;
+
+    public AuthController(AppDbContext context)
+    {
+        _context = context;
+    }
 
     [HttpGet("login")]
     public IActionResult Login([FromQuery] string? returnUrl = null)
@@ -30,10 +40,36 @@ public class AuthController : ControllerBase
         // add any logic you need to do with token here
         var accessToken = await HttpContext.GetTokenAsync("access_token");
 
+        // Get authenticated user info from Claims
+        var identity = HttpContext.User.Identity as ClaimsIdentity;
+        var githubLogin = identity?.FindFirst(ClaimTypes.Name)?.Value;
+        if (string.IsNullOrEmpty(githubLogin))
+        {
+            return Unauthorized("GitHub login not found in claims.");
+        }
 
-        // redirect back to FE
+        // Try to find existing user
+        var user = await _context.Users.SingleOrDefaultAsync(u => u.Username == githubLogin);
+        if (user == null)
+        {
+            // Create new user
+            user = new User
+            {
+                Username = githubLogin,
+                Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            };
+            _context.Users.Add(user);
+        }
+        else
+        {
+            // Update login date if needed
+            user.Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+            _context.Users.Update(user);
+        }
+        await _context.SaveChangesAsync();
+
+        // Redirect back to frontend
         var finalUrl = returnUrl ?? "https://localhost:5173/dashboard";
         return Redirect(finalUrl);
     }
-
 }
