@@ -65,12 +65,6 @@ const activeTab = ref('overview')
 const repositories = ref<IRepository[]>([])
 const selectedRepo = ref<IRepository | null>(null)
 
-// const backendBaseUrl = 'https://localhost:7014'
-
-// const api = axios.create({
-//   baseURL: backendBaseUrl,
-//   withCredentials: true,
-// })
 
 
 const loadRepositories = async () => {
