@@ -1,11 +1,7 @@
 <template>
   <BaseLayout>
     <template #default>
-      <HeaderMenu
-        v-model="activeTab"
-        :collaborators="collaborators"
-        @tabChange="handleTabChange"
-      />
+      <HeaderMenu v-model="activeTab" :collaborators="collaborators" @tabChange="handleTabChange" />
 
       <RepositoriesList
         v-if="activeTab === 'overview'"
@@ -35,9 +31,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
-import axios from 'axios'
 
 import { useUserStore } from '@/stores/user'
 import BaseLayout from '@/components/BaseLayout/BaseLayout.vue'
@@ -47,6 +42,19 @@ import HeaderMenu from '@/components/HeaderMenu/HeaderMenu.vue'
 import RepositoriesList from '@/components/RepositoriesList/RepositoriesList.vue'
 import RepositoryOverviewCard from '@/components/RepositoryOverviewCard/RepositoryOverviewCard.vue'
 import type { IRepository } from '@/models/IRepository.ts'
+import { ApiClientKey } from '@/plugins/api.ts'
+import type { IRepositoryDTO } from '@/models/IRepositoryDTO.ts'
+import { LoggerKey } from '@/plugins/logger.ts'
+
+const api = inject(ApiClientKey)
+if (!api) {
+  throw new Error('ApiClient not provided')
+}
+
+const logger = inject(LoggerKey)
+if (!logger) {
+  throw new Error('logger not provided')
+}
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -54,33 +62,38 @@ const { fetchUser, logout } = userStore
 
 const activeTab = ref('overview')
 
-
 const repositories = ref<IRepository[]>([])
 const selectedRepo = ref<IRepository | null>(null)
 
+// const backendBaseUrl = 'https://localhost:7014'
 
-const backendBaseUrl = 'https://localhost:7014'
-
-const api = axios.create({
-  baseURL: backendBaseUrl,
-  withCredentials: true,
-})
+// const api = axios.create({
+//   baseURL: backendBaseUrl,
+//   withCredentials: true,
+// })
 
 
 const loadRepositories = async () => {
   try {
-    const res = await api.get('/api/github/repositories')
-    repositories.value = res.data.repositories
+    const res = await api.get<IRepositoryDTO>('/api/github/repositories')
+    repositories.value = res.repositories;
   } catch (e) {
-    console.error('Error loading repositories', e)
+    logger.error('Error loading repositories', { error: e })
   }
 }
 
-
 const collaborators = ref([
-{ login: 'alice_dev', avatar_url: '/avatars/alice.png', html_url: 'https://github.com/alice_dev' },
-{ login: 'bob_coder', avatar_url: '/avatars/bob.png', html_url: 'https://github.com/bob_coder' },
-{ login: 'charlie_123', avatar_url: '/avatars/charlie.png', html_url: 'https://github.com/charlie_123' }
+  {
+    login: 'alice_dev',
+    avatar_url: '/avatars/alice.png',
+    html_url: 'https://github.com/alice_dev',
+  },
+  { login: 'bob_coder', avatar_url: '/avatars/bob.png', html_url: 'https://github.com/bob_coder' },
+  {
+    login: 'charlie_123',
+    avatar_url: '/avatars/charlie.png',
+    html_url: 'https://github.com/charlie_123',
+  },
 ])
 
 const handleSelectRepo = (repo: IRepository) => {
@@ -91,19 +104,13 @@ const handleTabChange = (tab: string) => {
   activeTab.value = tab
 }
 
-
 const handleLogout = async () => {
   await logout()
   router.push('/')
 }
-
 
 onMounted(async () => {
   await fetchUser()
   await loadRepositories()
 })
 </script>
-
-
-
-

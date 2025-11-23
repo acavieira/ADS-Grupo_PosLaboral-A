@@ -43,6 +43,7 @@ export class ApiClient {
       baseURL: config.baseUrl,
       headers: config.defaultHeaders || {},
       timeout: config.timeoutMs ?? 15000,
+      withCredentials: config.withCredentials ?? false,
     });
 
     this.axiosInstance.interceptors.request.use(async (request) => {
@@ -130,7 +131,6 @@ export class ApiClient {
             error.response?.status === 429 || // Too Many Requests
             error.response?.status === 503; // Service Unavailable
         },
-        // Optional: Implement exponential backoff
         retryDelay: axiosRetry.exponentialDelay,
       });
     }
