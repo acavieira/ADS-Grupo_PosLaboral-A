@@ -34,7 +34,7 @@
           :src="collaborator.avatar_url"
           :alt="collaborator.login"
           class="cursor-pointer"
-          @click="openProfile(collaborator.html_url)"
+          @click="openProfile(collaborator)"
         />
       </v-avatar>
     </div>
@@ -43,6 +43,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const props = defineProps<{
   collaborators: Array<{
@@ -70,8 +71,20 @@ watch(activeTab, (val) => {
   emit('tabChange', val)
 })
 
-function openProfile(url: string) {
-  window.open(url, '_blank')
+const router = useRouter()
+const route = useRoute()
+
+function openProfile(collaborator: { login: string }) {
+  // reaproveita o repo que já está na query da /stats
+  const repo = route.query.repo as string | undefined
+
+  router.push({
+    name: 'personal-stats',           // nome da rota que vamos criar já a seguir
+    query: {
+      ...(repo ? { repo } : {}),
+      login: collaborator.login,      // identifica o colaborador
+    },
+  })
 }
 </script>
 
