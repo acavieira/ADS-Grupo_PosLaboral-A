@@ -32,7 +32,7 @@ public class AuthController : ControllerBase
 
 
         // redirect back to FE
-        var finalUrl = returnUrl ?? "https://localhost:5173/dashboard";
+        var finalUrl = returnUrl ?? "http://localhost:5173/dashboard";
         return Redirect(finalUrl);
     }
 
