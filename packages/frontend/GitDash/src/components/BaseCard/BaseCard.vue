@@ -21,7 +21,7 @@ const props = withDefaults(
   }>(),
   {
     elevation: 2,
-    maxWidth: 400,
+    maxWidth: '100%',
     outlined: false,
     className: ''
   }
