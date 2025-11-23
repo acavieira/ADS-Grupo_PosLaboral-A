@@ -3,6 +3,7 @@ using GitDashBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace GitDashBackend.Controllers;
 
@@ -13,11 +14,13 @@ public class GitHubController : ControllerBase
 {
     private readonly IGitHubService _gitHubService;
     private readonly ILogger<GitHubController> _logger;
+    private readonly Data.AppDbContext _dbContext;
 
-    public GitHubController(IGitHubService gitHubService, ILogger<GitHubController> logger)
+    public GitHubController(IGitHubService gitHubService, ILogger<GitHubController> logger, Data.AppDbContext dbContext)
     {
         _gitHubService = gitHubService;
         _logger = logger;
+        _dbContext = dbContext;
     }
 
 
@@ -46,8 +49,39 @@ public class GitHubController : ControllerBase
 
         try
         {
-            // pass token to your service like before
+            // Register access log
+            var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
+            var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            int? userId = null;
+            if (!string.IsNullOrEmpty(username))
+            {
+                var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+                if (user != null)
+                    userId = user.Id;
+            }
+            _dbContext.Logs.Add(new Models.Log
+            {
+                UserId = userId ?? 0,
+                VisitedEndpoint = HttpContext.Request.Path,
+                Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+            });
+            await _dbContext.SaveChangesAsync();
+
+            // Fetch repositories
             RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(accessToken);
+
+            // Update repository visits
+            foreach (var repoDto in repositories.repositories)
+            {
+                var repo = await _dbContext.Repositories.SingleOrDefaultAsync(r => r.Name == repoDto.FullName);
+                if (repo != null)
+                {
+                    repo.VisitsNumber += 1;
+                    repo.LastVisited = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+                    _dbContext.Repositories.Update(repo);
+                }
+            }
+            await _dbContext.SaveChangesAsync();
 
             return Ok(repositories);
         }
@@ -70,6 +104,7 @@ public class GitHubController : ControllerBase
     /// <param name="authorization">GitHub Personal Access Token</param>
     /// <returns>List of commits with caching</returns>
     /// <example>GET /api/github/commits?fullName=acavieira/ADS-Grupo_PosLaboral-A</example>
+    [Authorize]
     [HttpGet("commits")]
     [ProducesResponseType(typeof(CommitsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
@@ -126,6 +161,7 @@ public class GitHubController : ControllerBase
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
     /// <returns>List of collaborators for the repository with their respective statistics.</returns>
+    [Authorize]
     [HttpGet("collaborators/{fullName}/{timeRange}")]
     [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -145,6 +181,26 @@ public class GitHubController : ControllerBase
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
+            // Register Log
+            var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
+            var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            int? userId = null;
+            if (!string.IsNullOrEmpty(username))
+            {
+                var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+                if (user != null)
+                    userId = user.Id;
+            }
+            if (userId != null)
+            {
+                _dbContext.Logs.Add(new Models.Log
+                {
+                    UserId = userId.Value,
+                    VisitedEndpoint = HttpContext.Request.Path,
+                    Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                });
+                await _dbContext.SaveChangesAsync();
+            }
             CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
             
             return Ok(new 
@@ -181,6 +237,7 @@ public class GitHubController : ControllerBase
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
     /// <returns>All the view with general repository statistics.</returns>
+    [Authorize]
     [HttpGet("stats/{fullName}/{timeRange}")]
     [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -200,6 +257,26 @@ public class GitHubController : ControllerBase
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
+            // Register Log
+            var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
+            var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+            int? userId = null;
+            if (!string.IsNullOrEmpty(username))
+            {
+                var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+                if (user != null)
+                    userId = user.Id;
+            }
+            if (userId != null)
+            {
+                _dbContext.Logs.Add(new Models.Log
+                {
+                    UserId = userId.Value,
+                    VisitedEndpoint = HttpContext.Request.Path,
+                    Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                });
+                await _dbContext.SaveChangesAsync();
+            }
             
             //CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
             
