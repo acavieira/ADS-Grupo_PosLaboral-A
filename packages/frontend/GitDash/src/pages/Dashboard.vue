@@ -90,7 +90,7 @@
             :key="repo.fullName"
             cols="12"
           >
-            <BaseCard class="pa-4 d-flex align-center">
+            <BaseCard class="pa-4 d-flex align-center" @click="handleSelectRepo(repo)">
               <v-avatar size="40" class="mr-4">
                 <v-img src="/github-icon.png" alt="Repository" />
               </v-avatar>
@@ -175,7 +175,12 @@ const loadRepositories = async () => {
 
 const handleSelectRepo = (repo: IRepository) => {
   selectedRepo.value = repo
+  router.push({
+    name: 'stats',
+    query: { repo: repo.fullName },   // ex.: ?repo=owner/proj
+  })
 }
+
 
 const handleLogout = async () => {
   await logout()
@@ -195,6 +200,13 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.repo-card {
+  cursor: pointer;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.repo-card:hover {
+  transform: translateY(-1px);
+}
 .logout-button {
   min-width: 120px;
 }
