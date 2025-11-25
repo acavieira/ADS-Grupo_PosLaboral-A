@@ -1,4 +1,5 @@
 ﻿using GitDashBackend.Configurations;
+using GitDashBackend.Middlewares;
 using GitDashBackend.Data;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -182,6 +183,9 @@ if (app.Environment.IsDevelopment())
 //app.UseHttpsRedirection();
 
 app.UseCors("Frontend");
+
+// Middleware to log access to endpoints
+((IApplicationBuilder)app).UseAccessLog();
 app.UseAuthentication();
 app.UseAuthorization();
 
