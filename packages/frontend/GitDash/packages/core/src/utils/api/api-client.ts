@@ -1,15 +1,15 @@
 import axios, {
-  AxiosInstance,
-  AxiosRequestConfig,
-  AxiosError,
-  AxiosRequestHeaders,
-  AxiosStatic,
+  type AxiosInstance,
+  type AxiosRequestConfig,
+  type AxiosError,
+  type AxiosRequestHeaders,
+  type AxiosStatic,
 } from "axios";
-import { RequestMetadata } from './types/request-metadata'
+import type { RequestMetadata } from './types/request-metadata'
 import { ApiError } from './types/api-error'
-import { ILoggerBase } from '../logger/types/logger-base'
-import { ApiClientConfig } from './config/api-client-config'
-import { ProblemDetails } from './types/problem-details'
+import type { ILoggerBase } from '../logger/types/logger-base'
+import type { ApiClientConfig } from './config/api-client-config'
+import type { ProblemDetails } from './types/problem-details'
 import axiosRetry from 'axios-retry';
 
 // Utility to generate a unique ID

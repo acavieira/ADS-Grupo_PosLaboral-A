@@ -40,7 +40,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { BACKEND_URL } from '@/config'
+//import { BACKEND_URL } from '@/config'
 import BaseCard from '@/components/BaseCard/BaseCard.vue'
 import BaseButton from '@/components/BaseButton/BaseButton.vue'
 
@@ -51,7 +51,8 @@ function login() {
   loading.value = true
   error.value = ''
   try {
-    window.location.href = `${BACKEND_URL}/login`
+    //window.location.href = `${BACKEND_URL}/login`
+    window.location.href = `${import.meta.env.VITE_BACKEND_URL}/login`
   } catch (e) {
     error.value = 'Failed to start login. Please try again.'
     loading.value = false

@@ -37,7 +37,6 @@
     "@git-dash/core": "workspace:*",
     "@git-dash/ui": "workspace:*",
     "@mdi/font": "^7.4.47",
-    "axios": "^1.13.1",
     "pinia": "^3.0.3",
     "vite-plugin-vuetify": "^2.1.2",
     "vue": "^3.5.18",

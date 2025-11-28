@@ -2,7 +2,7 @@ import type { AxiosRequestHeaders } from "axios";
 import { ApiClient } from "./api-client";
 import type { ApiClientConfig } from "./config/api-client-config";
 import { ApiError } from "./types/api-error";
-import { ILoggerBase } from '../logger/types/logger-base'
+import type { ILoggerBase } from '../logger/types/logger-base'
 
 type ApiKey = keyof ApiClientConfig;
 
