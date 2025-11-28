@@ -1,4 +1,4 @@
-import { ProblemDetails } from "./problem-details";
+import type { ProblemDetails } from "./problem-details";
 
 export class ApiError extends Error {
   readonly status: number;

@@ -1,5 +1,5 @@
-import { ApiError } from "../types/api-error";
-import { ILoggerBase } from '../../logger/types/logger-base'
+import type { ApiError } from "../types/api-error";
+import type { ILoggerBase } from '../../logger/types/logger-base'
 
 export interface ApiClientConfig {
   baseUrl: string;
