@@ -229,14 +229,14 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching collaborators." });
         }
     }
-    
+
     /// <summary>
     /// Get all the view with general repository statistics.
     /// </summary>
     /// <param name="authorization">GitHub Personal Access Token</param>
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
-    /// <returns>All the view with general repository statistics.</returns>
+    /// <returns>All the view with general repository statistics.</returns>   
     [Authorize]
     [HttpGet("stats/{fullName}/{timeRange}")]
     [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
@@ -257,31 +257,65 @@ public class GitHubController : ControllerBase
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            // Register Log
+        
+            // 1. Identify the User
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
             var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
             int? userId = null;
+
             if (!string.IsNullOrEmpty(username))
             {
                 var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
                 if (user != null)
                     userId = user.Id;
             }
+
+            // 2. Perform Database Operations (Log + Repository Upsert)
             if (userId != null)
             {
+                var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+
+                // A. Add Log (Existing logic)
                 _dbContext.Logs.Add(new Models.Log
                 {
                     UserId = userId.Value,
                     VisitedEndpoint = HttpContext.Request.Path,
-                    Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                    Created = now
                 });
+
+                // B. Upsert Repository (New Logic)
+                // Check if this specific user already has this repository in the DB
+                var existingRepo = await _dbContext.Repositories
+                    .FirstOrDefaultAsync(r => r.Name == decodedFullName && r.UserId == userId.Value);
+
+                if (existingRepo != null)
+                {
+                    // UPDATE: Repo exists, just update the timestamp
+                    existingRepo.LastVisited = now;
+                    existingRepo.VisitsNumber = ++existingRepo.VisitsNumber;
+                }
+                else
+                {
+                    // INSERT: Repo does not exist, create new entry
+                    var newRepo = new Models.Repository
+                    {
+                        Name = decodedFullName, // Assuming the column is 'Name' or 'FullName'
+                        UserId = userId.Value,
+                        LastVisited = now,
+                        VisitsNumber = 1,
+                        Created = now
+                        // Add other required fields here if necessary (e.g. Url, Description)
+                    };
+                    _dbContext.Repositories.Add(newRepo);
+                }
+
+                // Save both the Log and the Repository changes in one transaction
                 await _dbContext.SaveChangesAsync();
             }
-            
-            //CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
-            
+        
+            // 3. Fetch External Data
             RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(authorization, decodedFullName, timeRange);
-            
+        
             return Ok(statsOverview);
         }
         catch (ArgumentException ex)
