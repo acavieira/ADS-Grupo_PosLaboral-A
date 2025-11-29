@@ -100,9 +100,15 @@
           </BaseCard>
         </v-col>
       </v-row>
-      <v-row justify="center">
-        <v-col cols="12" md="8">
+      <v-row>
+        <v-col cols="6" md="8">
           <StatisticGraph :items="chartData" />
+        </v-col>
+        <v-col cols="6" md="8">
+          <CodeChangesCard
+            :additions="mockStats.additions"
+            :deletions="mockStats.deletions"
+          />
         </v-col>
       </v-row>
     </template>
@@ -122,7 +128,13 @@ import type { ICollaboratorStatsDTO } from '@/models/ICollaboratorStatsDTO'
 import { ApiClientKey } from '@/plugins/api.ts'
 import { LoggerKey } from '@/plugins/logger.ts'
 import StatisticGraph, { type CommitData } from '@/components/StatisticGraph/StatisticGraph.vue'
+import CodeChangesCard, { type CodeChangeStats } from '@/components/CodeChangesCard/CodeChangesCard.vue';
 
+// Mock Data
+const mockStats = ref<CodeChangeStats>({
+  additions: 12543,
+  deletions: 4321
+});
 const router = useRouter()
 const route = useRoute()
 
