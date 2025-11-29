@@ -129,6 +129,8 @@
         </v-row>
       </v-col>
     </v-row>
+
+
   </BaseLayout>
 </template>
 
@@ -197,6 +199,7 @@ onMounted(async () => {
   await fetchUser()
   await loadRepositories()
 })
+
 </script>
 
 <style scoped>

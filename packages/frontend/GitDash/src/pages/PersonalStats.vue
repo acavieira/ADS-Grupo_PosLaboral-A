@@ -61,9 +61,7 @@
               <v-icon size="18">mdi-source-branch</v-icon>
             </div>
             <div class="text-h5 mb-1">{{ totals.totalCommits }}</div>
-            <div class="text-caption text-medium-emphasis">
-              Commits contributed
-            </div>
+            <div class="text-caption text-medium-emphasis">Commits contributed</div>
           </BaseCard>
         </v-col>
 
@@ -74,9 +72,7 @@
               <v-icon size="18">mdi-git</v-icon>
             </div>
             <div class="text-h5 mb-1">{{ totals.pullRequests }}</div>
-            <div class="text-caption text-medium-emphasis">
-              PRs opened
-            </div>
+            <div class="text-caption text-medium-emphasis">PRs opened</div>
           </BaseCard>
         </v-col>
 
@@ -87,9 +83,7 @@
               <v-icon size="18">mdi-alert-circle-outline</v-icon>
             </div>
             <div class="text-h5 mb-1">{{ totals.issues }}</div>
-            <div class="text-caption text-medium-emphasis">
-              Issues created
-            </div>
+            <div class="text-caption text-medium-emphasis">Issues created</div>
           </BaseCard>
         </v-col>
 
@@ -102,10 +96,13 @@
             <div class="text-h6 mb-1 text-capitalize">
               {{ collaborator.role }}
             </div>
-            <div class="text-caption text-medium-emphasis">
-              Repository permission
-            </div>
+            <div class="text-caption text-medium-emphasis">Repository permission</div>
           </BaseCard>
+        </v-col>
+      </v-row>
+      <v-row justify="center">
+        <v-col cols="12" md="8">
+          <StatisticGraph :items="chartData" />
         </v-col>
       </v-row>
     </template>
@@ -124,9 +121,25 @@ import HeaderMenu from '@/components/HeaderMenu/HeaderMenu.vue'
 import type { ICollaboratorStatsDTO } from '@/models/ICollaboratorStatsDTO'
 import { ApiClientKey } from '@/plugins/api.ts'
 import { LoggerKey } from '@/plugins/logger.ts'
+import StatisticGraph, { type CommitData } from '@/components/StatisticGraph/StatisticGraph.vue'
 
 const router = useRouter()
 const route = useRoute()
+
+const chartData = ref<CommitData[]>([
+  { label: 'W1', value: 14 },
+  { label: 'W2', value: 20 },
+  { label: 'W3', value: 16 },
+  { label: 'W4', value: 21 },
+  { label: 'W5', value: 22 },
+  { label: 'W6', value: 17 },
+  { label: 'W7', value: 17 },
+  { label: 'W8', value: 18 },
+  { label: 'W9', value: 15 },
+  { label: 'W10', value: 21 },
+  { label: 'W11', value: 23 },
+  { label: 'W12', value: 17 },
+])
 
 const api = inject(ApiClientKey)
 if (!api) throw new Error('ApiClient not provided')
@@ -140,7 +153,7 @@ const timeRange = ref('1 month') // default
 const timeRanges = [
   { title: 'Last week', value: '1 week' },
   { title: 'Last month', value: '1 month' },
-  { title: 'Last 3 months', value: '3 months' }
+  { title: 'Last 3 months', value: '3 months' },
 ]
 
 const currentRepoFullName = computed(() => (route.query.repo as string) || '')
@@ -170,8 +183,8 @@ const loadCollaboratorStats = async () => {
 
     const dto = await api.get<ICollaboratorStatsDTO>(
       `/api/github/repositories/${repo}/collaborators/${login}?timeRange=${encodeURIComponent(
-        timeRange.value
-      )}`
+        timeRange.value,
+      )}`,
     )
 
     collaborator.value.avatarUrl = dto.avatarUrl
@@ -191,7 +204,7 @@ const loadCollaboratorStats = async () => {
 const goBack = () => {
   router.push({
     name: 'stats',
-    query: { repo: currentRepoFullName.value }
+    query: { repo: currentRepoFullName.value },
   })
 }
 
