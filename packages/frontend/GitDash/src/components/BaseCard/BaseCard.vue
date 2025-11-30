@@ -1,6 +1,6 @@
 <template>
   <v-card
-    :class="className"
+    :class="['custom-styled-card', className]"
     :elevation="elevation"
     :max-width="maxWidth"
     :outlined="outlined"
@@ -20,10 +20,20 @@ const props = withDefaults(
     className?: string
   }>(),
   {
-    elevation: 2,
+    elevation: 0,
     maxWidth: '100%',
     outlined: false,
     className: ''
   }
 )
 </script>
+
+<style scoped>
+.custom-styled-card {
+  border-radius: 12px !important;
+  border: 1px solid #E0E0E0 !important;
+  background-color: white !important;
+  padding: 24px;
+  height: 100%;
+}
+</style>
