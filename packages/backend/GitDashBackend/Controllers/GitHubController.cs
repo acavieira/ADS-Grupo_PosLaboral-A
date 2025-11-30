@@ -13,12 +13,17 @@ namespace GitDashBackend.Controllers;
 public class GitHubController : ControllerBase
 {
     private readonly IGitHubService _gitHubService;
+    private readonly IDbService _dbService;
     private readonly ILogger<GitHubController> _logger;
     private readonly Data.AppDbContext _dbContext;
 
-    public GitHubController(IGitHubService gitHubService, ILogger<GitHubController> logger, Data.AppDbContext dbContext)
+    public GitHubController(IGitHubService gitHubService,
+        IDbService dbService,
+        ILogger<GitHubController> logger,
+        Data.AppDbContext dbContext)
     {
         _gitHubService = gitHubService;
+        _dbService = dbService;
         _logger = logger;
         _dbContext = dbContext;
     }
@@ -188,6 +193,7 @@ public class GitHubController : ControllerBase
             if (!string.IsNullOrEmpty(username))
             {
                 var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+
                 if (user != null)
                     userId = user.Id;
             }
@@ -265,49 +271,20 @@ public class GitHubController : ControllerBase
 
             if (!string.IsNullOrEmpty(username))
             {
-                var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
-                if (user != null)
-                    userId = user.Id;
+                //var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+                var user = _dbService.GetUserbyUsername(username);
+                if (user.Result != null)
+                    userId = user.Result.Id;
             }
 
             // 2. Perform Database Operations (Log + Repository Upsert)
             if (userId != null)
             {
-                var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
+                // A. Add Log
+                _dbService.InsertNewLog(userId.Value, HttpContext.Request.Path);
 
-                // A. Add Log (Existing logic)
-                _dbContext.Logs.Add(new Models.Log
-                {
-                    UserId = userId.Value,
-                    VisitedEndpoint = HttpContext.Request.Path,
-                    Created = now
-                });
-
-                // B. Upsert Repository (New Logic)
-                // Check if this specific user already has this repository in the DB
-                var existingRepo = await _dbContext.Repositories
-                    .FirstOrDefaultAsync(r => r.Name == decodedFullName && r.UserId == userId.Value);
-
-                if (existingRepo != null)
-                {
-                    // UPDATE: Repo exists, just update the timestamp
-                    existingRepo.LastVisited = now;
-                    existingRepo.VisitsNumber = ++existingRepo.VisitsNumber;
-                }
-                else
-                {
-                    // INSERT: Repo does not exist, create new entry
-                    var newRepo = new Models.Repository
-                    {
-                        Name = decodedFullName, // Assuming the column is 'Name' or 'FullName'
-                        UserId = userId.Value,
-                        LastVisited = now,
-                        VisitsNumber = 1,
-                        Created = now
-                        // Add other required fields here if necessary (e.g. Url, Description)
-                    };
-                    _dbContext.Repositories.Add(newRepo);
-                }
+                // B. Upsert Repository
+                _dbService.UpsertVisitedRepository(decodedFullName, userId.Value);
 
                 // Save both the Log and the Repository changes in one transaction
                 await _dbContext.SaveChangesAsync();
