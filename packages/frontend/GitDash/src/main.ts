@@ -5,9 +5,10 @@ import { createPinia } from 'pinia';
 import vuetify from './plugins/vuetify';
 import { apiClient, ApiClientKey } from "./plugins/api";
 import { appLogger, LoggerKey } from './plugins/logger.ts'
+import VueApexCharts from "vue3-apexcharts";
 
 const app = createApp(App);
-
+app.use(VueApexCharts);
 app.use(createPinia());
 app.use(router);
 app.use(vuetify);

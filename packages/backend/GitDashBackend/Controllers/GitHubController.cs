@@ -153,7 +153,7 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching commits" });
         }
     }
-    
+
     /// <summary>
     /// Get collaborators for a specific repository using fullName and timeRange as part of the route.
     /// </summary>
@@ -169,15 +169,17 @@ public class GitHubController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositoryCollaborators(
-        [FromHeader] string authorization,
         [FromRoute] string fullName,
         [FromRoute] string timeRange)
     {
         try
         {
-            if (string.IsNullOrEmpty(authorization))
+            var accessToken = await HttpContext.GetTokenAsync("access_token");
+
+            if (string.IsNullOrEmpty(accessToken))
             {
-                return Unauthorized("Authorization header is required.");
+                // user is not authenticated via GitHub or token not saved
+                return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
@@ -201,7 +203,7 @@ public class GitHubController : ControllerBase
                 });
                 await _dbContext.SaveChangesAsync();
             }
-            CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
+            CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(accessToken, decodedFullName, timeRange);
             
             return Ok(new 
             {
@@ -233,7 +235,6 @@ public class GitHubController : ControllerBase
     /// <summary>
     /// Get all the view with general repository statistics.
     /// </summary>
-    /// <param name="authorization">GitHub Personal Access Token</param>
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
     /// <returns>All the view with general repository statistics.</returns>
@@ -245,15 +246,17 @@ public class GitHubController : ControllerBase
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepoOverviewStats(
-        [FromHeader] string authorization,
         [FromRoute] string fullName,
         [FromRoute] string timeRange)
     {
         try
         {
-            if (string.IsNullOrEmpty(authorization))
+            var accessToken = await HttpContext.GetTokenAsync("access_token");
+
+            if (string.IsNullOrEmpty(accessToken))
             {
-                return Unauthorized("Authorization header is required.");
+                // user is not authenticated via GitHub or token not saved
+                return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
@@ -280,7 +283,7 @@ public class GitHubController : ControllerBase
             
             //CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
             
-            RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(authorization, decodedFullName, timeRange);
+            RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(accessToken, decodedFullName, timeRange);
             
             return Ok(statsOverview);
         }

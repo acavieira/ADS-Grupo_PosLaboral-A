@@ -1,6 +1,6 @@
 <template>
   <v-container class="fill-height d-flex justify-center align-center" fluid>
-    <BaseCard class="pa-8" :max-width="400" :elevation="10">
+    <BaseCard class="pa-8" :max-width="400" :max-height="300" :elevation="10">
       <v-card-text class="text-center">
         <!-- Avatar / GitHub Icon -->
         <v-avatar size="64" class="mx-auto mb-4">
