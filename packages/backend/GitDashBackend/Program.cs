@@ -58,6 +58,7 @@ builder.Services
         options.UserInformationEndpoint = "https://api.github.com/user";
 
         options.SaveTokens = true;
+        options.Scope.Add("repo");
 
         options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.NameIdentifier, "id");
         options.ClaimActions.MapJsonKey(System.Security.Claims.ClaimTypes.Name, "login");
