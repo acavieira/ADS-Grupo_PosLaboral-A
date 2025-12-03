@@ -140,7 +140,7 @@ namespace GitDashBackend.Tests.Controllers
         public async Task GetRepositoryCollaborators_ShouldReturnUnauthorized_WhenTokenMissing()
         {
             // Act
-            var result = await _controller.GetRepositoryCollaborators("", "owner/repo", "1 week");
+            var result = await _controller.GetRepositoryCollaborators("owner/repo", "1 week");
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
@@ -159,7 +159,10 @@ namespace GitDashBackend.Tests.Controllers
                 .Returns(Task.FromResult(fakeCollaborators));
 
             // Act
-            var result = await _controller.GetRepositoryCollaborators("token", "owner/repo", "1 week");
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = "token";
+            _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await _controller.GetRepositoryCollaborators("owner/repo", "1 week");
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -174,7 +177,7 @@ namespace GitDashBackend.Tests.Controllers
                 .ThrowsAsync(new Exception("Unexpected"));
 
             // Act
-            var result = await _controller.GetRepositoryCollaborators("token", "owner/repo", "1 week");
+            var result = await _controller.GetRepositoryCollaborators("owner/repo", "1 week");
 
             // Assert
             var error = Assert.IsType<ObjectResult>(result);
@@ -192,7 +195,7 @@ namespace GitDashBackend.Tests.Controllers
             // No arrangement needed, token is passed directly
 
             // Act
-            var result = await _controller.GetRepoOverviewStats("", "owner/repo", "1 week");
+            var result = await _controller.GetRepoOverviewStats("owner/repo", "1 week");
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
@@ -214,7 +217,11 @@ namespace GitDashBackend.Tests.Controllers
                 .Returns(Task.FromResult(fakeStats));
 
             // Act
-            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = token;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await controller.GetRepoOverviewStats(fullName, timeRange);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -235,7 +242,11 @@ namespace GitDashBackend.Tests.Controllers
                 .ThrowsAsync(new ArgumentException(errorMessage));
 
             // Act
-            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = token;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await controller.GetRepoOverviewStats(fullName, timeRange);
 
             // Assert
             var badRequestResult = Assert.IsType<BadRequestObjectResult>(result);
@@ -256,7 +267,10 @@ namespace GitDashBackend.Tests.Controllers
                 .ThrowsAsync(new Octokit.AuthorizationException());
 
             // Act
-            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = token;
+            _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await _controller.GetRepoOverviewStats(fullName, timeRange);
 
             // Assert
             var unauthorizedResult = Assert.IsType<UnauthorizedObjectResult>(result);
@@ -276,7 +290,10 @@ namespace GitDashBackend.Tests.Controllers
                 .ThrowsAsync(new Exception("Unexpected error"));
 
             // Act
-            var result = await _controller.GetRepoOverviewStats(token, fullName, timeRange);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = token;
+            _controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await _controller.GetRepoOverviewStats(fullName, timeRange);
 
             // Assert
             var errorResult = Assert.IsType<ObjectResult>(result);
@@ -299,7 +316,11 @@ namespace GitDashBackend.Tests.Controllers
                 .Returns(Task.FromResult(fakeStats));
 
             // Act
-            var result = await _controller.GetRepoOverviewStats(token, encodedName, timeRange);
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = token;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var result = await controller.GetRepoOverviewStats(encodedName, timeRange);
 
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
@@ -308,6 +329,60 @@ namespace GitDashBackend.Tests.Controllers
             // Verify the service was called with the correctly decoded name
             A.CallTo(() => _gitHubService.GetRepositoryStatsAsync(token, decodedName, timeRange))
                 .MustHaveHappenedOnceExactly();
+        }
+
+        // -------------------------------
+        // GetCollaboratorWeeklyActivity Tests
+        // -------------------------------
+
+        [Fact]
+        public async Task GetCollaboratorWeeklyActivity_ShouldReturnUnauthorized_WhenTokenMissing()
+        {
+            // Arrange
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            // Act
+            var result = await controller.GetCollaboratorWeeklyActivity("owner/repo", "user");
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorWeeklyActivity_ShouldReturnNotFound_WhenCollaboratorOrRepoInvalid()
+        {
+            // Arrange
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<CollaboratorDto?>(null));
+            // Act
+            var result = await controller.GetCollaboratorWeeklyActivity("owner/repo", "user");
+            // Assert
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorWeeklyActivity_ShouldReturnOk_WhenWeeklyActivityFound()
+        {
+            // Arrange
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var collaborator = new CollaboratorDto { Login = "user", WeeklyActivity = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 } };
+            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<CollaboratorDto?>(collaborator));
+            // Act
+            var result = await controller.GetCollaboratorWeeklyActivity("owner/repo", "user");
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returned = Assert.IsType<CollaboratorDto>(okResult.Value);
+            Assert.Equal("user", returned.Login);
+            Assert.Equal(12, returned.WeeklyActivity.Count);
         }
     }
 }

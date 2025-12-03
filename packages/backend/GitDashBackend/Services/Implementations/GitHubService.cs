@@ -45,6 +45,34 @@ public class GitHubService : IGitHubService
         return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange));
     }
 
+    public async Task<CollaboratorDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
+    {
+        var cacheKey = $"weekly_activity_{fullName.Replace("/", "_")}_{username}_{token.GetHashCode()}";
+        var weeks = await _redisAccessor.GetAsync<List<int>>(cacheKey);
+        if (weeks == null)
+        {
+            _logger.LogInformation("Cache miss - fetching weekly activity from GitHub API for key: {CacheKey}", cacheKey);
+            weeks = await _gitHubAccessor.GetCollaboratorWeeklyActivityAsync(token, fullName, username);
+            if (weeks == null)
+                return null;
+            while (weeks.Count < 12)
+                weeks.Insert(0, 0);
+            await _redisAccessor.SetAsync(cacheKey, weeks, _cacheExpiration);
+        }
+        else
+        {
+            _logger.LogInformation("Returning weekly activity from cache for key: {CacheKey}", cacheKey);
+        }
+
+        // Build and return the CollaboratorDto
+        var collaborator = new CollaboratorDto
+        {
+            Login = username,
+            WeeklyActivity = weeks
+        };
+        return collaborator;
+    }
+
     // Generic cache helper for collections
     private async Task<IEnumerable<T>> GetOrFetchAsync<T>(string cacheKey, Func<Task<IEnumerable<T>>> fetchFunc)
     {
@@ -79,4 +107,6 @@ public class GitHubService : IGitHubService
         await _redisAccessor.SetAsync(cacheKey, data, _cacheExpiration);
         return data;
     }
+
+
 }

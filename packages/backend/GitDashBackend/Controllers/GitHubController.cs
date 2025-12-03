@@ -175,15 +175,12 @@ public class GitHubController : ControllerBase
         try
         {
             var accessToken = await HttpContext.GetTokenAsync("access_token");
-
             if (string.IsNullOrEmpty(accessToken))
             {
-                // user is not authenticated via GitHub or token not saved
                 return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            // Register Log
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
             var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
             int? userId = null;
@@ -204,8 +201,11 @@ public class GitHubController : ControllerBase
                 await _dbContext.SaveChangesAsync();
             }
             CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(accessToken, decodedFullName, timeRange);
-            
-            return Ok(new 
+            if (collaborators == null)
+            {
+                return NotFound(new { error = $"Repository '{fullName}' not found or invalid." });
+            }
+            return Ok(new
             {
                 repository = decodedFullName,
                 count = collaborators.count,
@@ -252,15 +252,12 @@ public class GitHubController : ControllerBase
         try
         {
             var accessToken = await HttpContext.GetTokenAsync("access_token");
-
             if (string.IsNullOrEmpty(accessToken))
             {
-                // user is not authenticated via GitHub or token not saved
                 return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            // Register Log
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
             var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
             int? userId = null;
@@ -280,11 +277,11 @@ public class GitHubController : ControllerBase
                 });
                 await _dbContext.SaveChangesAsync();
             }
-            
-            //CollaboratorsDto collaborators = await _gitHubService.GetRepositoryCollaboratorsAsync(authorization, decodedFullName, timeRange);
-            
             RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(accessToken, decodedFullName, timeRange);
-            
+            if (statsOverview == null)
+            {
+                return NotFound(new { error = $"Repository '{fullName}' not found or invalid." });
+            }
             return Ok(statsOverview);
         }
         catch (ArgumentException ex)
@@ -306,4 +303,85 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching statistics." });
         }
     }
+
+        /// <summary>
+        /// Get weekly activity (commits per week for the last 12 weeks) for a specific collaborator in a repository.
+        /// </summary>
+        /// <param name="fullName">Full name of the repository (owner/repo)</param>
+        /// <param name="username">Name of the collaborator</param>
+        /// <returns>List of commits per week (12 weeks)</returns>
+        [Authorize]
+        [HttpGet("repositories/{fullName}/collaborators/{username}/weekly-activity")]
+        [ProducesResponseType(typeof(CollaboratorDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetCollaboratorWeeklyActivity(
+            [FromRoute] string fullName,
+            [FromRoute] string username)
+        {
+            try
+            {
+                var accessToken = await HttpContext.GetTokenAsync("access_token");
+                if (string.IsNullOrEmpty(accessToken))
+                {
+                    return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
+                }
+
+                var decodedFullName = Uri.UnescapeDataString(fullName);
+                var decodedUsername = Uri.UnescapeDataString(username);
+
+                // Access log
+                var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
+                var userName = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+                int? userId = null;
+                if (!string.IsNullOrEmpty(userName))
+                {
+                    var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == userName);
+                    if (user != null)
+                        userId = user.Id;
+                }
+                if (userId != null)
+                {
+                    _dbContext.Logs.Add(new Models.Log
+                    {
+                        UserId = userId.Value,
+                        VisitedEndpoint = HttpContext.Request.Path,
+                        Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                    });
+                    await _dbContext.SaveChangesAsync();
+                }
+
+                // Get weekly activity
+                var collaborator = await _gitHubService.GetCollaboratorWeeklyActivityAsync(accessToken, decodedFullName, decodedUsername);
+
+                if (collaborator == null)
+                {
+                    return NotFound(new { error = $"Repository '{fullName}' or collaborator '{username}' not found or invalid." });
+                }
+
+                return Ok(collaborator);
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("Bad request when querying weekly activity: {Message}", ex.Message);
+                return BadRequest(new { error = ex.Message });
+            }
+            catch (Octokit.AuthorizationException)
+            {
+                return Unauthorized(new { error = "Invalid GitHub token" });
+            }
+            catch (Octokit.NotFoundException)
+            {
+                return NotFound(new { error = $"Repository '{fullName}' or collaborator '{username}' not found or invalid." });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching weekly activity for {FullName} and {Username}", fullName, username);
+                return StatusCode(500, new { error = "An error occurred while fetching weekly activity." });
+            }
+        }
+
+
 }
