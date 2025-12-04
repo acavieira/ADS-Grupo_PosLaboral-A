@@ -8,5 +8,4 @@ public class CollaboratorDto
     public int Commits { get; set; }
     public int PullRequests { get; set; }
     public int Issues { get; set; }
-    public List<int> WeeklyActivity { get; set; } = new List<int>();
 }

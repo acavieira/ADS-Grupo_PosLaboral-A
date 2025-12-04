@@ -45,7 +45,7 @@ public class GitHubService : IGitHubService
         return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange));
     }
 
-    public async Task<CollaboratorDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
+    public async Task<WeeklyActivityDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
     {
         var cacheKey = $"weekly_activity_{fullName.Replace("/", "_")}_{username}_{token.GetHashCode()}";
         var weeks = await _redisAccessor.GetAsync<List<int>>(cacheKey);
@@ -64,13 +64,12 @@ public class GitHubService : IGitHubService
             _logger.LogInformation("Returning weekly activity from cache for key: {CacheKey}", cacheKey);
         }
 
-        // Build and return the CollaboratorDto
-        var collaborator = new CollaboratorDto
+        // Build and return the WeeklyActivityDto
+        var weeklyActivity = new WeeklyActivityDto
         {
-            Login = username,
-            WeeklyActivity = weeks
+            Weeks = weeks
         };
-        return collaborator;
+        return weeklyActivity;
     }
 
     // Generic cache helper for collections

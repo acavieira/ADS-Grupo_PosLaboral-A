@@ -357,7 +357,7 @@ namespace GitDashBackend.Tests.Controllers
             httpContext.Request.Headers["Authorization"] = fakeToken;
             var controller = new GitHubController(_gitHubService, _logger, _context);
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
-            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<CollaboratorDto?>(null));
+            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<WeeklyActivityDto?>(null));
             // Act
             var result = await controller.GetCollaboratorWeeklyActivity("owner/repo", "user");
             // Assert
@@ -374,15 +374,14 @@ namespace GitDashBackend.Tests.Controllers
             httpContext.Request.Headers["Authorization"] = fakeToken;
             var controller = new GitHubController(_gitHubService, _logger, _context);
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
-            var collaborator = new CollaboratorDto { Login = "user", WeeklyActivity = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 } };
-            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<CollaboratorDto?>(collaborator));
+            var weeklyActivity = new WeeklyActivityDto { Weeks = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 } };
+            A.CallTo(() => _gitHubService.GetCollaboratorWeeklyActivityAsync(A<string>._, A<string>._, A<string>._)).Returns(Task.FromResult<WeeklyActivityDto?>(weeklyActivity));
             // Act
             var result = await controller.GetCollaboratorWeeklyActivity("owner/repo", "user");
             // Assert
             var okResult = Assert.IsType<OkObjectResult>(result);
-            var returned = Assert.IsType<CollaboratorDto>(okResult.Value);
-            Assert.Equal("user", returned.Login);
-            Assert.Equal(12, returned.WeeklyActivity.Count);
+            var returned = Assert.IsType<WeeklyActivityDto>(okResult.Value);
+            Assert.Equal(12, returned.Weeks.Count);
         }
     }
 }

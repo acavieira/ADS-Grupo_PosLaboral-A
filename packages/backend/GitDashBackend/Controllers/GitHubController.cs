@@ -30,6 +30,7 @@ public class GitHubController : ControllerBase
     /// (saved automatically during the OAuth login flow).
     /// </summary>
     /// <returns>List of user repositories.</returns>
+
     [Authorize]
     [HttpGet("repositories")]
     [ProducesResponseType(typeof(RepositoriesDto), StatusCodes.Status200OK)]
@@ -40,7 +41,6 @@ public class GitHubController : ControllerBase
     {
         // Take token from the same place as /api/github/test
         var accessToken = await HttpContext.GetTokenAsync("access_token");
-
         if (string.IsNullOrEmpty(accessToken))
         {
             // user is not authenticated via GitHub or token not saved
@@ -52,20 +52,20 @@ public class GitHubController : ControllerBase
             // Register access log
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
             var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
-            int? userId = null;
             if (!string.IsNullOrEmpty(username))
             {
                 var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
                 if (user != null)
-                    userId = user.Id;
+                {
+                    _dbContext.Logs.Add(new Models.Log
+                    {
+                        UserId = user.Id,
+                        VisitedEndpoint = HttpContext.Request.Path,
+                        Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                    });
+                    await _dbContext.SaveChangesAsync();
+                }
             }
-            _dbContext.Logs.Add(new Models.Log
-            {
-                UserId = userId ?? 0,
-                VisitedEndpoint = HttpContext.Request.Path,
-                Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
-            });
-            await _dbContext.SaveChangesAsync();
 
             // Fetch repositories
             RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(accessToken);
@@ -310,6 +310,7 @@ public class GitHubController : ControllerBase
         /// <param name="fullName">Full name of the repository (owner/repo)</param>
         /// <param name="username">Name of the collaborator</param>
         /// <returns>List of commits per week (12 weeks)</returns>
+        
         [Authorize]
         [HttpGet("repositories/{fullName}/collaborators/{username}/weekly-activity")]
         [ProducesResponseType(typeof(CollaboratorDto), StatusCodes.Status200OK)]
@@ -321,14 +322,13 @@ public class GitHubController : ControllerBase
             [FromRoute] string fullName,
             [FromRoute] string username)
         {
+            var accessToken = await HttpContext.GetTokenAsync("access_token");
+            if (string.IsNullOrEmpty(accessToken))
+            {
+                return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
+            }
             try
             {
-                var accessToken = await HttpContext.GetTokenAsync("access_token");
-                if (string.IsNullOrEmpty(accessToken))
-                {
-                    return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
-                }
-
                 var decodedFullName = Uri.UnescapeDataString(fullName);
                 var decodedUsername = Uri.UnescapeDataString(username);
 
@@ -361,7 +361,12 @@ public class GitHubController : ControllerBase
                     return NotFound(new { error = $"Repository '{fullName}' or collaborator '{username}' not found or invalid." });
                 }
 
-                return Ok(collaborator);
+                // Novo DTO: retorna apenas as semanas
+                var weeklyActivityDto = new GitDashBackend.Domain.DTOs.WeeklyActivityDto
+                {
+                    Weeks = collaborator.Weeks
+                };
+                return Ok(weeklyActivityDto);
             }
             catch (ArgumentException ex)
             {
