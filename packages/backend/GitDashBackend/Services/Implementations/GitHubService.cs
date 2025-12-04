@@ -1,5 +1,5 @@
-using GitDashBackend.Accessors.Interfaces;
 using GitDashBackend.Domain.DTOs;
+using GitDashBackend.Accessors.Interfaces;
 using GitDashBackend.Services.Interfaces;
 
 namespace GitDashBackend.Services.Implementations;
@@ -41,35 +41,39 @@ public class GitHubService : IGitHubService
 
     public async Task<RepoOverviewStatsDto> GetRepositoryStatsAsync(string token, string fullName, string timeRange)
     {
-        var cacheKey = $"stats_{fullName.Replace("/", "_")}_{token.GetHashCode()}";
+        var cacheKey = $"stats_{fullName.Replace("/", "_")}_{timeRange}_{token.GetHashCode()}";
         return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange));
     }
 
     public async Task<WeeklyActivityDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
     {
         var cacheKey = $"weekly_activity_{fullName.Replace("/", "_")}_{username}_{token.GetHashCode()}";
-        var weeks = await _redisAccessor.GetAsync<List<int>>(cacheKey);
-        if (weeks == null)
-        {
-            _logger.LogInformation("Cache miss - fetching weekly activity from GitHub API for key: {CacheKey}", cacheKey);
-            weeks = await _gitHubAccessor.GetCollaboratorWeeklyActivityAsync(token, fullName, username);
+        return await GetOrFetchSingleAsync(cacheKey, async () => {
+            var weeks = await _gitHubAccessor.GetCollaboratorWeeklyActivityAsync(token, fullName, username);
             if (weeks == null)
                 return null;
             while (weeks.Count < 12)
                 weeks.Insert(0, 0);
-            await _redisAccessor.SetAsync(cacheKey, weeks, _cacheExpiration);
-        }
-        else
-        {
-            _logger.LogInformation("Returning weekly activity from cache for key: {CacheKey}", cacheKey);
-        }
+            return new WeeklyActivityDto { Weeks = weeks };
+        });
+    }
 
-        // Build and return the WeeklyActivityDto
-        var weeklyActivity = new WeeklyActivityDto
-        {
-            Weeks = weeks
-        };
-        return weeklyActivity;
+    public async Task<CollaboratorActivityDto?> GetCollaboratorActivityAsync(string token, string fullName, string username, string range)
+    {
+        var cacheKey = $"collab_activity_{fullName.Replace("/", "_")}_{username}_{range}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetCollaboratorActivityAsync(token, fullName, username, range));
+    }
+
+    public Task<RepositoryDto?> GetRepositoryByOwnerRepoAsync(string token, string ownerRepo)
+    {
+        var cacheKey = $"repo_lookup_{ownerRepo.Replace("/", "_")}_{token.GetHashCode()}";
+        return GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryByOwnerRepoAsync(token, ownerRepo));
+    }
+
+    public async Task<CollaboratorCodeChangesDto?> GetCollaboratorCodeChangesAsync(string token, string fullName, string username, string range)
+    {
+        var cacheKey = $"code_changes_{fullName.Replace("/", "_")}_{username}_{range}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetCollaboratorCodeChangesAsync(token, fullName, username, range));
     }
 
     // Generic cache helper for collections
@@ -91,7 +95,7 @@ public class GitHubService : IGitHubService
     }
 
     // Generic cache helper for single objects
-    private async Task<T> GetOrFetchSingleAsync<T>(string cacheKey, Func<Task<T>> fetchFunc) where T : class
+    private async Task<T> GetOrFetchSingleAsync<T>(string cacheKey, Func<Task<T>> fetchFunc) where T : class?
     {
         var cachedData = await _redisAccessor.GetAsync<T>(cacheKey);
         if (cachedData != null)
