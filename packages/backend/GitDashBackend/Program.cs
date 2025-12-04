@@ -42,8 +42,8 @@ builder.Services
     .AddCookie(options =>
     {
         options.Cookie.HttpOnly = true;
-        options.Cookie.SameSite = SameSiteMode.None;
-        options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
     })
     .AddOAuth("GitHub", options =>
     {
@@ -115,7 +115,10 @@ builder.Services.AddSwaggerGen(options =>
     {
         Title = "GitDash Backend API",
         Version = "v1",
-        Description = "API for GitDash - GitHub Dashboard",
+        Description = "API for GitDash - GitHub Dashboard. \n\n" +
+                      "**Auth Instructions:** \n" +
+                      "1. Go to `/login` in your browser to sign in via GitHub.\n" +
+                      "2. Come back here and execute endpoints. The browser handles the cookie automatically.",
         Contact = new Microsoft.OpenApi.Models.OpenApiContact
         {
             Name = "GitDash Team - ADS-Grupo_PosLaboral-A",
@@ -123,30 +126,8 @@ builder.Services.AddSwaggerGen(options =>
         }
     });
 
-    // Add GitHub Token Authentication (simple ApiKey)
-    options.AddSecurityDefinition("GitHubToken", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-    {
-        Description = "GitHub Personal Access Token. Just paste your token directly (e.g., 'ghp_yourTokenHere')",
-        Name = "Authorization",
-        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
-        Scheme = "ApiKey"
-    });
-
-    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
-    {
-        {
-            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
-            {
-                Reference = new Microsoft.OpenApi.Models.OpenApiReference
-                {
-                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
-                    Id = "GitHubToken"
-                }
-            },
-            Array.Empty<string>()
-        }
-    });
+    // REMOVED: AddSecurityDefinition ("GitHubToken")
+    // REMOVED: AddSecurityRequirement
 });
 
 // Register custom services 
