@@ -430,7 +430,7 @@ public class GitHubAccessor : IGitHubAccessor
         }
     }
 
-    private static DateTimeOffset GetStartDateFromTimeRange(string timeRange)
+    private static DateTime GetStartDateFromTimeRange(string timeRange)
     {
         return timeRange switch
         {
