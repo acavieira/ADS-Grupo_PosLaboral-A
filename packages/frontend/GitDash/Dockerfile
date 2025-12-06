@@ -5,7 +5,12 @@ COPY package.json package-lock.json ./
 COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
 RUN npm ci
+
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
 COPY . .
+
 RUN npm run build
 
 
