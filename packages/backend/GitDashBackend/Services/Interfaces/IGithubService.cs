@@ -8,4 +8,5 @@ public interface IGitHubService
     Task<CommitsDto> GetRepositoryCommitsByFullNameAsync(string token, string fullName);
     Task<CollaboratorsDto> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange);
     Task<RepoOverviewStatsDto> GetRepositoryStatsAsync(string token, string fullName, string timeRange);
+    Task<WeeklyActivityDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username);
 }

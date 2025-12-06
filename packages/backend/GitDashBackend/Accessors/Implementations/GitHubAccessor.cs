@@ -220,6 +220,38 @@ public class GitHubAccessor : IGitHubAccessor
         return overview;
     }
 
+      public async Task<List<int>?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
+    {
+        _logger.LogInformation("Fetching weekly activity for {FullName} and {Username}", fullName, username);
+        var (owner, repo) = ParseFullName(fullName);
+        var client = CreateClient(token);
+
+        // Buscar commits do colaborador nos últimos 12 semanas
+        var now = DateTime.UtcNow;
+        var weeks = new List<int>();
+        for (int i = 11; i >= 0; i--)
+        {
+            var weekStart = now.AddDays(-7 * i).Date.AddDays(-(int)now.DayOfWeek); // início da semana
+            var weekEnd = weekStart.AddDays(7);
+            var request = new CommitRequest
+            {
+                Author = username,
+                Since = weekStart,
+                Until = weekEnd
+            };
+            try
+            {
+                var commits = await client.Repository.Commit.GetAll(owner, repo, request);
+                weeks.Add(commits.Count);
+            }
+            catch (NotFoundException)
+            {
+                return null;
+            }
+        }
+        return weeks;
+    }
+
     private static DateTime GetStartDateFromTimeRange(string timeRange)
     {
         return timeRange switch
