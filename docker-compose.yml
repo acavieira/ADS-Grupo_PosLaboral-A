@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   redis:
     image: redis:8.2.3-alpine
@@ -25,16 +23,18 @@ services:
       - gitdash_network
 
   backend:
-    image: gitdash-backend:0.0.1
+    image: gitdash-backend:1.0.0
     build:
       context: packages/backend/
       dockerfile: GitDashBackend/Dockerfile
     container_name: backend
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
-      - DB_CONNECTION_STRING=Host=postgres;Database=gitdash;Username=exampleuser;Password=examplepassword
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=gitdashdb;Username=exampleuser;Password=examplepassword123
+      - Redis__Configuration=redis:6379
+      - FrontendOrigin=http://localhost:8080
     ports:
-      - "5000:8080"
+      - "5053:8080"
     depends_on:
       - redis
       - postgres
@@ -42,10 +42,12 @@ services:
       - gitdash_network
 
   frontend:
-    image: gitdash-frontend:0.0.1
+    image: gitdash-frontend:1.0.0
     build:
       context: packages/frontend/GitDash
       dockerfile: Dockerfile
+      args:
+        - VITE_BACKEND_URL=http://localhost:5053
     container_name: frontend
     ports:
       - "8080:80"

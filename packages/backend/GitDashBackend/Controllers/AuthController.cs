@@ -7,6 +7,7 @@ using GitDashBackend.Data;
 using GitDashBackend.Models;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
+using Microsoft.Extensions.Configuration;
 
 namespace GitDashBackend.Controllers;
 
@@ -14,10 +15,12 @@ namespace GitDashBackend.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _context;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(AppDbContext context)
+    public AuthController(AppDbContext context, IConfiguration configuration)
     {
         _context = context;
+        _configuration = configuration;
     }
 
     [HttpGet("login")]
@@ -68,8 +71,12 @@ public class AuthController : ControllerBase
         }
         await _context.SaveChangesAsync();
 
+        // Gets frontend url from env var
+        var frontendUrl = _configuration["FrontendOrigin"]
+                     ?? "http://localhost:5173";
+
         // Redirect back to frontend
-        var finalUrl = returnUrl ?? "http://localhost:5173/dashboard";
+        var finalUrl = returnUrl ?? frontendUrl + "/dashboard";
         return Redirect(finalUrl);
     }
 }
