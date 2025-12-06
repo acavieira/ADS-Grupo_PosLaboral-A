@@ -5,7 +5,7 @@
     @tab-change="handleTabChange"
   >
     <v-card flat>
-      <v-card-text>
+      <v-card-text class="bg-grey-lighten-5">
         <div v-if="isLoading" class="d-flex justify-center pa-4">
           <v-progress-circular indeterminate color="primary" />
         </div>

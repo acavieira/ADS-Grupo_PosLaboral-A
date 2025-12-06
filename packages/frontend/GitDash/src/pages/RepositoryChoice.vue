@@ -1,7 +1,7 @@
 <template>
   <v-app>
-    <v-main>
-      <v-container class="bg-grey-lighten-5">
+    <v-main class="bg-grey-lighten-5">
+      <v-container class="mx-auto px-6 pt-6" style="max-width: 1100px;">
 
         <v-row class="align-center">
           <v-col cols="12" md="8">
@@ -45,17 +45,18 @@
 
             <v-row v-else dense>
               <v-col
-                v-for="repo in recentRepositories"
+                v-for="repo in allRepositories"
                 :key="repo.fullName"
                 cols="12"
               >
                 <RepositoryCard
                   :repo="repo"
                   :onSelect="handleSelectRepo"
+                  clickable
                 />
               </v-col>
 
-              <v-col v-if="recentRepositories.length === 0" cols="12">
+              <v-col v-if="allRepositories.length === 0" cols="12">
                 <p class="text-caption text-center text-grey">No recent repositories found.</p>
               </v-col>
             </v-row>

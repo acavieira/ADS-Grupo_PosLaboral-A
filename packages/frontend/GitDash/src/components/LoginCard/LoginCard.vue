@@ -24,7 +24,7 @@
           @click="login"
         >
           <template #default>
-            <v-icon left>mdi-github</v-icon>
+            <v-icon start>mdi-github</v-icon>
             Sign in with GitHub
           </template>
         </BaseButton>

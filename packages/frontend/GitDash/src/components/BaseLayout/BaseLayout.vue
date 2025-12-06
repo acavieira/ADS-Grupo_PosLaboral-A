@@ -1,7 +1,7 @@
 <template>
   <v-app>
-    <v-main>
-      <v-container class="bg-grey-lighten-5">
+    <v-main class="bg-grey-lighten-5">
+      <v-container class="mx-auto px-6 pt-6" style="max-width: 1100px;">
         <v-row class="align-center mb-4">
           <v-col cols="12" md="8" class="d-flex align-center ga-4">
             <BaseButton color="grey" class="text-none" @click="goBack">
@@ -18,7 +18,8 @@
 
           <v-col cols="12" md="4" class="d-flex justify-end">
             <v-select
-              v-model="timeRangeModel" :items="timeRanges"
+              v-model="timeRangeModel"
+              :items="timeRanges"
               item-title="title"
               item-value="value"
               density="comfortable"
@@ -46,7 +47,7 @@ import { BaseButton } from '@/components/BaseButton'
 import { useRouter } from 'vue-router'
 import { useRepositoryStore } from '@/stores/repository.ts'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { type TimeRange, useTimeRangeStore } from '@/stores/timeRange.ts'
 
 const router = useRouter()
@@ -72,7 +73,6 @@ const timeRangeModel = computed({
   },
 })
 
-
 const props = defineProps<{
   tabs: Tab[]
   activeTab: string
@@ -91,4 +91,14 @@ const handleTabChange = (key: string) => {
 const goBack = () => {
   router.push('/repository-choice')
 }
+
+watch(
+  currentRepository,
+  (newRepo) => {
+    if (!newRepo) {
+      goBack()
+    }
+  },
+  { immediate: true },
+)
 </script>
