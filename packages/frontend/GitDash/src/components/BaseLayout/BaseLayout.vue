@@ -83,13 +83,12 @@ const emit = defineEmits<{
   (e: 'tab-change', key: string): void
 }>()
 
-// ... (Methods and watchers remain the same) ...
 const handleTabChange = (key: string) => {
   emit('update:activeTab', key)
   emit('tab-change', key)
 }
 
 const goBack = () => {
-  router.push('/dashboard')
+  router.push('/repository-choice')
 }
 </script>
