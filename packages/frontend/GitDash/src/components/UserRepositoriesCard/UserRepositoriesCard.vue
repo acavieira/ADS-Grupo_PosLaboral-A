@@ -1,9 +1,7 @@
 <template>
   <BaseCard class="pa-6">
-    <h2 class="text-subtitle-1 font-weight-medium mb-1">
-      Your Repositories
-    </h2>
-    <p class="text-body-2 text-medium-emphasis mb-4">
+    <h2 class="text-h6 mb-2">Your Repositories</h2>
+    <p class="text-body-1 text-medium-emphasis mb-4">
       Select from your accessible repositories
     </p>
 

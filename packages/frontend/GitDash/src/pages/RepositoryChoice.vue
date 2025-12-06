@@ -5,8 +5,8 @@
 
         <v-row class="align-center">
           <v-col cols="12" md="8">
-            <h1 class="text-h4 font-weight-medium mb-2">Select Repository</h1>
-            <p class="text-body-2 text-medium-emphasis">
+            <h1 class="text-h5 font-weight-bold mb-2">Select Repository</h1>
+            <p class="text-h6 text-medium-emphasis">
               Choose a repository to view detailed analytics and collaborator dashboards
             </p>
           </v-col>
@@ -35,7 +35,7 @@
 
         <v-row class="mt-8">
           <v-col cols="12">
-            <h2 class="text-subtitle-1 font-weight-medium mb-4">
+            <h2 class="text-h6 font-weight-bold mb-2">
               Recent Repositories
             </h2>
 

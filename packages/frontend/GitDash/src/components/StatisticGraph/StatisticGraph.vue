@@ -1,5 +1,5 @@
 <template>
-  <v-card class="mx-auto" elevation="2" rounded="lg" max-width="600">
+  <BaseCard class="pa-6">
     <v-card-title class="d-flex justify-space-between align-center pt-4 pl-4 pr-4">
       <span class="text-h6 font-weight-regular">Weekly Commit Activity</span>
     </v-card-title>
@@ -12,12 +12,13 @@
         :series="series"
       ></apexchart>
     </v-card-text>
-  </v-card>
+  </BaseCard>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { ApexOptions } from 'apexcharts';
+import BaseCard from '@/components/BaseCard/BaseCard.vue'
 
 export interface CommitData {
   label: string;

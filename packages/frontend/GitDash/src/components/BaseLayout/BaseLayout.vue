@@ -4,14 +4,14 @@
       <v-container class="mx-auto px-6 pt-6" style="max-width: 1100px;">
         <v-row class="align-center mb-4">
           <v-col cols="12" md="8" class="d-flex align-center ga-4">
-            <BaseButton color="grey" class="text-none" @click="goBack">
+            <BaseButton color="grey" @click="goBack">
               <template #default>
                 <v-icon start>mdi-arrow-left</v-icon>
                 Change Repository
               </template>
             </BaseButton>
 
-            <span class="text-subtitle-1 font-weight-medium">
+            <span class="text-h6 font-weight-medium">
               {{ getCurrentRepositoryFullName }}
             </span>
           </v-col>
