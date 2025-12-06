@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace GitDashBackend.Accessors.Implementations;
 
-public class GitHubAccessor : IGitHubAccessor
+public class GitHubAccessor : IGitHubAccessor    
 {
     private readonly ILogger<GitHubAccessor> _logger;
 
@@ -242,7 +242,7 @@ public class GitHubAccessor : IGitHubAccessor
         var (owner, repo) = ParseFullName(fullName);
         var client = CreateClient(token);
 
-        // Buscar commits do colaborador nos últimos 12 semanas
+        // Calculate weekly commits for the last 12 weeks
         var now = DateTime.UtcNow;
         var weeks = new List<int>();
         for (int i = 11; i >= 0; i--)
@@ -268,7 +268,169 @@ public class GitHubAccessor : IGitHubAccessor
         return weeks;
     }
 
-    private static DateTimeOffset GetStartDateFromTimeRange(string timeRange)
+    public async Task<CollaboratorActivityDto?> GetCollaboratorActivityAsync(string token, string fullName, string username, string range)
+    {
+        _logger.LogInformation("Fetching collaborator activity for {FullName} and {Username}", fullName, username);
+        var (owner, repo) = ParseFullName(fullName);
+        var client = CreateClient(token);
+
+        // Determine date range using standard helper
+        DateTime until = DateTime.UtcNow;
+        DateTime since = GetStartDateFromTimeRange(range);
+
+        // COMMITS
+        var commitRequest = new CommitRequest
+        {
+            Author = username,
+            Since = since,
+            Until = until
+        };
+        int commitCount = 0;
+        try
+        {
+            var commits = await client.Repository.Commit.GetAll(owner, repo, commitRequest);
+            commitCount = commits.Count;
+        }
+        catch
+        {
+            // Requirement: If any number is difficult to get, just skip it and return what is available.
+        }
+
+        // PULL REQUESTS
+        int prTotal = 0, prMerged = 0;
+        try
+        {
+            var prRequest = new PullRequestRequest
+            {
+                State = ItemStateFilter.All
+            };
+            var prs = await client.PullRequest.GetAllForRepository(owner, repo, prRequest);
+            var userPrs = prs.Where(pr => pr.User?.Login?.Equals(username, StringComparison.OrdinalIgnoreCase) == true
+                && pr.CreatedAt.UtcDateTime >= since && pr.CreatedAt.UtcDateTime <= until).ToList();
+            prTotal = userPrs.Count;
+            prMerged = userPrs.Count(pr => pr.MergedAt.HasValue && pr.MergedAt.Value.UtcDateTime >= since && pr.MergedAt.Value.UtcDateTime <= until);
+        }
+        catch
+        {
+            // Requirement: If any number is difficult to get, just skip it and return what is available.
+        }
+
+        // ISSUES
+        int issuesTotal = 0, issuesClosed = 0;
+        try
+        {
+            var issueRequest = new RepositoryIssueRequest
+            {
+                State = ItemStateFilter.All,
+                Creator = username,
+                Since = since
+            };
+            var issues = await client.Issue.GetAllForRepository(owner, repo, issueRequest);
+            var userIssues = issues.Where(i => i.CreatedAt.UtcDateTime >= since && i.CreatedAt.UtcDateTime <= until).ToList();
+            issuesTotal = userIssues.Count;
+            issuesClosed = userIssues.Count(i => i.ClosedAt.HasValue && i.ClosedAt.Value.UtcDateTime >= since && i.ClosedAt.Value.UtcDateTime <= until);
+        }
+        catch
+        {
+            // Requirement: If any number is difficult to get, just skip it and return what is available.
+        }
+
+        // REVIEWS (data limited by the API)
+        int reviewsGiven = 0;
+        try
+        {
+            var prs = await client.PullRequest.GetAllForRepository(owner, repo);
+            foreach (var pr in prs)
+            {
+                var reviews = await client.PullRequest.Review.GetAll(owner, repo, pr.Number);
+                reviewsGiven += reviews.Count(r => r.User?.Login?.Equals(username, StringComparison.OrdinalIgnoreCase) == true
+                    && r.SubmittedAt is DateTimeOffset submittedAt && submittedAt.UtcDateTime >= since && submittedAt.UtcDateTime <= until);
+            }
+        }
+        catch
+        {
+            // Requirement: If any number is difficult to get, just skip it and return what is available.
+        }
+
+        return new CollaboratorActivityDto
+        {
+            commits = new CommitStats { totalCount = commitCount },
+            pullRequests = new PullRequestStats { totalCount = prTotal, mergedCount = prMerged },
+            issues = new IssueStats { totalCount = issuesTotal, closedCount = issuesClosed },
+            reviews = new ReviewStats { givenCount = reviewsGiven }
+        };
+    }
+
+    public async Task<RepositoryDto?> GetRepositoryByOwnerRepoAsync(string token, string ownerRepo)
+    {
+        if (string.IsNullOrEmpty(ownerRepo) || !ownerRepo.Contains('/')) return null;
+        var (owner, repo) = ParseFullName(ownerRepo);
+        var client = CreateClient(token);
+        try
+        {
+            var repoObj = await client.Repository.Get(owner, repo);
+            var languages = await client.Repository.GetAllLanguages(owner, repo);
+            return new RepositoryDto
+            {
+                FullName = repoObj.FullName,
+                Description = repoObj.Description ?? string.Empty,
+                IsPrivate = repoObj.Private,
+                Starred = repoObj.StargazersCount,
+                Forked = repoObj.ForksCount,
+                Languages = languages.Select(l => l.Name).ToList()
+            };
+        }
+        catch (Octokit.NotFoundException)
+        {
+            return null;
+        }
+        catch (Octokit.AuthorizationException)
+        {
+            return null;
+        }
+    }    
+
+    public async Task<CollaboratorCodeChangesDto?> GetCollaboratorCodeChangesAsync(string token, string fullName, string username, string range)
+    {
+        // Decode fullName in case it is URL-encoded
+        var decodedFullName = Uri.UnescapeDataString(fullName);
+        var (owner, repo) = ParseFullName(decodedFullName);
+        var client = CreateClient(token);
+        // Use private helper for date range
+        DateTime since = GetStartDateFromTimeRange(range);
+        DateTime until = DateTime.UtcNow;
+        int additions = 0, deletions = 0;
+        try
+        {
+            // Filter commits by author and date range
+            var commitRequest = new CommitRequest
+            {
+                Author = username,
+                Since = since,
+                Until = until
+            };
+            var commits = await client.Repository.Commit.GetAll(owner, repo, commitRequest);
+            foreach (var commit in commits)
+            {
+                // Aggregate additions and deletions
+                additions += commit.Stats?.Additions ?? 0;
+                deletions += commit.Stats?.Deletions ?? 0;
+            }
+            return new CollaboratorCodeChangesDto { Additions = additions, Deletions = deletions };
+        }
+        catch (Octokit.NotFoundException)
+        {
+            // Return null if repo or collaborator not found
+            return null;
+        }
+        catch (Exception)
+        {
+            // Return null for any other error
+            return null;
+        }
+    }
+
+    private static DateTime GetStartDateFromTimeRange(string timeRange)
     {
         return timeRange switch
         {
@@ -288,5 +450,6 @@ public class GitHubAccessor : IGitHubAccessor
 
         var parts = fullName.Split('/');
         return (parts[0], parts[1]);
-    }    
+    }
+
 }

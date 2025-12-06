@@ -5,10 +5,6 @@ using GitDashBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-using Microsoft.EntityFrameworkCore; // Add this for UseInMemoryDatabase
-using System;
-using System.Threading.Tasks;
-using Xunit;
 
 namespace GitDashBackend.Tests.Controllers
 {
@@ -382,6 +378,243 @@ namespace GitDashBackend.Tests.Controllers
             var okResult = Assert.IsType<OkObjectResult>(result);
             var returned = Assert.IsType<WeeklyActivityDto>(okResult.Value);
             Assert.Equal(12, returned.Weeks.Count);
+        }
+
+        // -------------------------------
+        // GetCollaboratorActivity Tests
+        // -------------------------------
+
+        [Fact]
+        public async Task GetCollaboratorActivity_ShouldReturnOk_WhenStatsFound()
+        {
+            // Arrange
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var activity = new CollaboratorActivityDto
+            {
+                commits = new CommitStats { totalCount = 5 },
+                pullRequests = new PullRequestStats { totalCount = 2, mergedCount = 1 },
+                issues = new IssueStats { totalCount = 3, closedCount = 2 },
+                reviews = new ReviewStats { givenCount = 4 }
+            };
+            _ = A.CallTo(() => _gitHubService.GetCollaboratorActivityAsync(fakeToken, "owner/repo", "user", "1 week"))
+                .Returns(Task.FromResult(activity));
+            // Act
+            var result = await controller.GetCollaboratorActivity("owner/repo", "user", "1 week");
+            // Assert
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returned = Assert.IsType<CollaboratorActivityDto>(okResult.Value);
+            Assert.Equal(5, returned.commits.totalCount);
+            Assert.Equal(2, returned.pullRequests.totalCount);
+            Assert.Equal(1, returned.pullRequests.mergedCount);
+            Assert.Equal(3, returned.issues.totalCount);
+            Assert.Equal(2, returned.issues.closedCount);
+            Assert.Equal(4, returned.reviews.givenCount);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorActivity_ShouldReturnUnauthorized_WhenTokenMissing()
+        {
+            // Arrange
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            // Act
+            var result = await controller.GetCollaboratorActivity("owner/repo", "user", "1 week");
+            // Assert
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorActivity_ShouldReturnBadRequest_WhenArgumentException()
+        {
+            // Arrange
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorActivityAsync(fakeToken, "owner/repo", "user", "invalid"))
+                .ThrowsAsync(new ArgumentException("Invalid range"));
+            // Act
+            var result = await controller.GetCollaboratorActivity("owner/repo", "user", "invalid");
+            // Assert
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorActivity_ShouldReturnInternalServerError_WhenUnhandledException()
+        {
+            // Arrange
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorActivityAsync(fakeToken, "owner/repo", "user", "1 week"))
+                .ThrowsAsync(new Exception("Unexpected error"));
+            // Act
+            var result = await controller.GetCollaboratorActivity("owner/repo", "user", "1 week");
+            // Assert
+            var error = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
+        }
+
+        // -------------------------------
+        // GetCollaboratorCodeChanges Tests
+        // -------------------------------
+
+        [Fact]
+        public async Task GetCollaboratorCodeChanges_ShouldReturnOk_WhenDataFound()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var codeChanges = new CollaboratorCodeChangesDto { Additions = 10, Deletions = 5 };
+            A.CallTo(() => _gitHubService.GetCollaboratorCodeChangesAsync(fakeToken, "owner/repo", "user", "1 week"))
+                .Returns(Task.FromResult<CollaboratorCodeChangesDto?>(codeChanges));
+            var result = await controller.GetCollaboratorCodeChanges("owner/repo", "user", "1 week");
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returned = Assert.IsType<CollaboratorCodeChangesDto>(okResult.Value);
+            Assert.Equal(10, returned.Additions);
+            Assert.Equal(5, returned.Deletions);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorCodeChanges_ShouldReturnNotFound_WhenNoData()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorCodeChangesAsync(fakeToken, "owner/repo", "user", "1 week"))
+                .Returns(Task.FromResult<CollaboratorCodeChangesDto?>(null));
+            var result = await controller.GetCollaboratorCodeChanges("owner/repo", "user", "1 week");
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorCodeChanges_ShouldReturnUnauthorized_WhenTokenMissing()
+        {
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var result = await controller.GetCollaboratorCodeChanges("owner/repo", "user", "1 week");
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorCodeChanges_ShouldReturnBadRequest_WhenArgumentException()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorCodeChangesAsync(fakeToken, "owner/repo", "user", "invalid"))
+                .ThrowsAsync(new ArgumentException("Invalid range"));
+            var result = await controller.GetCollaboratorCodeChanges("owner/repo", "user", "invalid");
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetCollaboratorCodeChanges_ShouldReturnInternalServerError_WhenUnhandledException()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetCollaboratorCodeChangesAsync(fakeToken, "owner/repo", "user", "1 week"))
+                .ThrowsAsync(new Exception("Unexpected error"));
+            var result = await controller.GetCollaboratorCodeChanges("owner/repo", "user", "1 week");
+            var error = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
+        }
+
+        // -------------------------------
+        // GetRepositoryByUrl (Lookup by URL) Tests
+        // -------------------------------
+
+        [Fact]
+        public async Task GetRepositoryByUrl_ShouldReturnOk_WhenRepoFound()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            var repoDto = new RepositoryDto { FullName = "owner/repo", Description = "desc" };
+            A.CallTo(() => _gitHubService.GetRepositoryByOwnerRepoAsync(fakeToken, "owner/repo"))
+                .Returns(Task.FromResult<RepositoryDto?>(repoDto));
+            var result = await controller.GetRepositoryByUrl("owner/repo");
+            var okResult = Assert.IsType<OkObjectResult>(result);
+            var returned = Assert.IsType<RepositoryDto>(okResult.Value);
+            Assert.Equal("owner/repo", returned.FullName);
+        }
+
+        [Fact]
+        public async Task GetRepositoryByUrl_ShouldReturnNotFound_WhenRepoNotFound()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetRepositoryByOwnerRepoAsync(fakeToken, "owner/repo"))
+                .Returns(Task.FromResult<RepositoryDto?>(null));
+            var result = await controller.GetRepositoryByUrl("owner/repo");
+            var notFound = Assert.IsType<NotFoundObjectResult>(result);
+            Assert.Equal(StatusCodes.Status404NotFound, notFound.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetRepositoryByUrl_ShouldReturnUnauthorized_WhenTokenMissing()
+        {
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+            var result = await controller.GetRepositoryByUrl("owner/repo");
+            var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result);
+            Assert.Equal(StatusCodes.Status401Unauthorized, unauthorized.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetRepositoryByUrl_ShouldReturnBadRequest_WhenArgumentException()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetRepositoryByOwnerRepoAsync(fakeToken, "invalid"))
+                .ThrowsAsync(new ArgumentException("Invalid format"));
+            var result = await controller.GetRepositoryByUrl("invalid");
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result);
+            Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+        }
+
+        [Fact]
+        public async Task GetRepositoryByUrl_ShouldReturnInternalServerError_WhenUnhandledException()
+        {
+            var fakeToken = "token";
+            var httpContext = new DefaultHttpContext();
+            httpContext.Request.Headers["Authorization"] = fakeToken;
+            var controller = new GitHubController(_gitHubService, _logger, _context);
+            controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+            A.CallTo(() => _gitHubService.GetRepositoryByOwnerRepoAsync(fakeToken, "owner/repo"))
+                .ThrowsAsync(new Exception("Unexpected error"));
+            var result = await controller.GetRepositoryByUrl("owner/repo");
+            var error = Assert.IsType<ObjectResult>(result);
+            Assert.Equal(StatusCodes.Status500InternalServerError, error.StatusCode);
         }
     }
 }
