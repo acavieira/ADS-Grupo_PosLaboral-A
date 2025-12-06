@@ -143,11 +143,21 @@ public class GitHubAccessor : IGitHubAccessor
         var overview = new RepoOverviewStatsDto();
 
         // === KPI METRICS ===
+        var sinceDate = GetStartDateFromTimeRange(timeRange);
+        
         // Commits (for the selected time range)
-        var commits = await client.Repository.Commit.GetAll(owner, repo, new CommitRequest
+        var request = new CommitRequest
         {
-            Since = GetStartDateFromTimeRange(timeRange)
-        });
+            Since = sinceDate
+        };
+
+        // This tells Octokit to fetch all pages, not just the first one
+        var options = new ApiOptions 
+        { 
+            PageSize = 100, 
+            PageCount = 10 // Adjust based on how much history you really need
+        };
+        var commits = await client.Repository.Commit.GetAll(owner, repo, request, options);
         overview.Kpis.Commits = commits.Count;
 
         // Pull Requests merged
@@ -156,7 +166,10 @@ public class GitHubAccessor : IGitHubAccessor
             Type = IssueTypeQualifier.PullRequest,
             Repos = { $"{owner}/{repo}" },
             State = ItemState.Closed,
-            Is = new List<IssueIsQualifier> { IssueIsQualifier.Merged }
+            Is = new List<IssueIsQualifier> { IssueIsQualifier.Merged },
+    
+            // Filter by the date the PR was actually merged
+            Merged = new DateRange(sinceDate, SearchQualifierOperator.GreaterThanOrEqualTo)
         });
         overview.Kpis.PrsMerged = mergedPrs.TotalCount;
 
@@ -165,9 +178,12 @@ public class GitHubAccessor : IGitHubAccessor
         {
             Type = IssueTypeQualifier.Issue,
             Repos = { $"{owner}/{repo}" },
-            State = ItemState.Closed
+            State = ItemState.Closed, // Ensures they are currently closed
+    
+            // Filter by the specific date the issue was closed
+            Closed = new DateRange(sinceDate, SearchQualifierOperator.GreaterThanOrEqualTo)
         });
-        
+
         overview.Kpis.IssuesClosed = closedIssues.TotalCount;
         
         // === OPEN WORK ===
@@ -252,7 +268,7 @@ public class GitHubAccessor : IGitHubAccessor
         return weeks;
     }
 
-    private static DateTime GetStartDateFromTimeRange(string timeRange)
+    private static DateTimeOffset GetStartDateFromTimeRange(string timeRange)
     {
         return timeRange switch
         {

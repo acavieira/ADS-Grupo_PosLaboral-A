@@ -123,20 +123,45 @@ public class DbController : ControllerBase
         return repository;
     }
 
-    // GET: api/Db/user/{username}/repositories
     [HttpGet("user/{username}/repositories")]
-    public async Task<ActionResult<IEnumerable<Repository>>> GetRepositoriesByUsername(string username)
+    public async Task<ActionResult<IEnumerable<Repository>>> GetRepositoriesByUsername(
+        string username,
+        [FromQuery] string? sortOrder, // Nullable: defaults to null if not sent
+        [FromQuery] int? limit)        // Nullable: defaults to null if not sent
     {
-        // 1. Query the Repositories table.
-        var repositories = await _context.Repositories
-            .Include(r => r.User) 
-            .Where(r => r.User.Username == username)
-            .ToListAsync();
+        // 1. Start building the query
+        var query = _context.Repositories
+            .Include(r => r.User)
+            .Where(r => r.User.Username == username);
 
-        // 3. Check for results.
+        // 2. Apply Sorting ONLY if sortOrder is provided
+        if (!string.IsNullOrWhiteSpace(sortOrder))
+        {
+            switch (sortOrder.ToLower())
+            {
+                case "asc":
+                    query = query.OrderBy(r => r.LastVisited);
+                    break;
+                case "desc":
+                    query = query.OrderByDescending(r => r.LastVisited);
+                    break;
+                // If the string is something else (e.g. "random"), we do nothing 
+                // and leave the default database order.
+            }
+        }
+
+        // 3. Apply Limit ONLY if a limit is provided
+        if (limit.HasValue && limit.Value > 0)
+        {
+            query = query.Take(limit.Value);
+        }
+
+        // 4. Execute Query
+        var repositories = await query.ToListAsync();
+
+        // 5. Check results
         if (repositories == null || !repositories.Any())
         {
-            // Return 404 if no repositories are found for that username.
             return NotFound($"No repositories found for user: {username}");
         }
 

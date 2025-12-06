@@ -13,12 +13,17 @@ namespace GitDashBackend.Controllers;
 public class GitHubController : ControllerBase
 {
     private readonly IGitHubService _gitHubService;
+    private readonly IDbService _dbService;
     private readonly ILogger<GitHubController> _logger;
     private readonly Data.AppDbContext _dbContext;
 
-    public GitHubController(IGitHubService gitHubService, ILogger<GitHubController> logger, Data.AppDbContext dbContext)
+    public GitHubController(IGitHubService gitHubService,
+        IDbService dbService,
+        ILogger<GitHubController> logger,
+        Data.AppDbContext dbContext)
     {
         _gitHubService = gitHubService;
+        _dbService = dbService;
         _logger = logger;
         _dbContext = dbContext;
     }
@@ -187,6 +192,7 @@ public class GitHubController : ControllerBase
             if (!string.IsNullOrEmpty(username))
             {
                 var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+
                 if (user != null)
                     userId = user.Id;
             }
@@ -231,13 +237,13 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching collaborators." });
         }
     }
-    
+
     /// <summary>
     /// Get all the view with general repository statistics.
     /// </summary>
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
     /// <param name="timeRange">Time range for filtering statistics ('1 week', '1 month', '3 months').</param>
-    /// <returns>All the view with general repository statistics.</returns>
+    /// <returns>All the view with general repository statistics.</returns>   
     [Authorize]
     [HttpGet("stats/{fullName}/{timeRange}")]
     [ProducesResponseType(typeof(CollaboratorsDto), StatusCodes.Status200OK)]
@@ -258,23 +264,33 @@ public class GitHubController : ControllerBase
             }
 
             var decodedFullName = Uri.UnescapeDataString(fullName);
+        
+            // 1. Identify the User
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
             var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
             int? userId = null;
+
             if (!string.IsNullOrEmpty(username))
             {
-                var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
-                if (user != null)
-                    userId = user.Id;
+                //var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+                var user = _dbService.GetUserbyUsername(username);
+                if (user.Result != null)
+                    userId = user.Result.Id;
             }
+
+            // 2. Perform Database Operations (Log + Repository Upsert)
             if (userId != null)
             {
-                _dbContext.Logs.Add(new Models.Log
-                {
-                    UserId = userId.Value,
-                    VisitedEndpoint = HttpContext.Request.Path,
-                    Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
-                });
+                // A. Add Log
+                _dbService.InsertNewLog(userId.Value, HttpContext.Request.Path);
+                
+                // Save changes in db
+                await _dbContext.SaveChangesAsync();
+
+                // B. Upsert Repository
+                _dbService.UpsertVisitedRepository(decodedFullName, userId.Value);
+
+                // Save changes in db
                 await _dbContext.SaveChangesAsync();
             }
             RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(accessToken, decodedFullName, timeRange);
