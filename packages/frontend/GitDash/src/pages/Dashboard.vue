@@ -108,7 +108,6 @@
 import { ref, onMounted, inject } from 'vue'
 import { useRouter } from 'vue-router'
 
-import { useUserStore } from '@/stores/user'
 import BaseCard from '@/components/BaseCard/BaseCard.vue'
 import BaseButton from '@/components/BaseButton/BaseButton.vue'
 import RepositoriesList from '@/components/RepositoriesList/RepositoriesList.vue'
@@ -118,8 +117,6 @@ import type { IRepositoryDTO } from '@/models/IRepositoryDTO.ts'
 import { LoggerKey } from '@/plugins/logger.ts'
 import RepositoryCard from '@/components/RepositoryCard/RepositoryCard.vue'
 import { useRepositoryStore } from '@/stores/repository'
-import { storeToRefs } from 'pinia'
-
 
 const api = inject(ApiClientKey)
 if (!api) {
@@ -132,8 +129,6 @@ if (!logger) {
 }
 
 const router = useRouter()
-const userStore = useUserStore()
-const { fetchUser, logout } = userStore
 
 const repoStore = useRepositoryStore()
 
@@ -158,7 +153,7 @@ const handleSelectRepo = (repo: IRepository) => {
 
 
 const handleLogout = async () => {
-  await logout()
+  await api.post('/logout')
   router.push('/')
 }
 
@@ -169,7 +164,6 @@ const handleLoadRepository = () => {
 }
 
 onMounted(async () => {
-  await fetchUser()
   await loadRepositories()
 })
 
