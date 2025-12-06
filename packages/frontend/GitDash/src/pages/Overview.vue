@@ -124,8 +124,6 @@ const { currentRepository, getCurrentRepositoryFullName } = storeToRefs(repoStor
 const { timeRange, getHumanReadableTimeRange } = storeToRefs(timeStore)
 
 const router = useRouter()
-const userStore = useUserStore()
-const { fetchUser } = userStore
 
 
 // view model usado no template para os stats
@@ -174,7 +172,6 @@ const loadRepoStats = async () => {
 // ------- Ciclo de vida / watchers -------
 
 onMounted(async () => {
-  await fetchUser()
 
   if (!getCurrentRepositoryFullName.value) {
     router.push({ name: 'dashboard' })

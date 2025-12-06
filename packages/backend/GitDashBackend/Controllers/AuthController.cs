@@ -68,7 +68,7 @@ public class AuthController : ControllerBase
         await _context.SaveChangesAsync();
 
         // Redirect back to frontend
-        var finalUrl = returnUrl ?? "http://localhost:5173/dashboard";
+        var finalUrl = returnUrl ?? "http://localhost:5173/repository-choice";
         return Redirect(finalUrl);
     }
 
