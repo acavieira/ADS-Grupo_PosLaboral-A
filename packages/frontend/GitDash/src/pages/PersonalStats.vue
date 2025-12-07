@@ -5,33 +5,33 @@
 
   <div v-else>
     <v-row class="mb-4">
-      <v-col cols="12" sm="6" md="4" lg="3"> <StatKpiCard
+      <v-col cols="12" sm="6" lg="3"> <StatKpiCard
         title="Total Commits"
         :value="totals.commits"
-        caption="All time contributions"
+        :caption="`(${humanTimeRange})`"
         icon="mdi-source-branch"
       />
       </v-col>
 
-      <v-col cols="12" sm="6" md="4" lg="3">
+      <v-col cols="12" sm="6" lg="3">
         <StatKpiCard
-          title="Pull Requests"
+          :title="`Pull Requests (${humanTimeRange})`"
           :value="totals.prTotal"
           :caption="`${totals.prMerged} merged`"
           icon="mdi-source-pull"
         />
       </v-col>
 
-      <v-col cols="12" sm="6" md="4" lg="3">
+      <v-col cols="12" sm="6" lg="3">
         <StatKpiCard
-          title="Issues"
+          :title="`Issues (${humanTimeRange})`"
           :value="totals.issueTotal"
           :caption="`${totals.issueClosed} closed`"
           icon="mdi-alert-circle-outline"
         />
       </v-col>
 
-      <v-col cols="12" sm="6" md="4" lg="3">
+      <v-col cols="12" sm="6" lg="3">
         <StatKpiCard
           title="Reviews Given"
           :value="totals.reviews"
@@ -66,10 +66,15 @@ import { usePersonalStats } from '@/composables/usePersonalStats'
 import StatisticGraph from '@/components/StatisticGraph/StatisticGraph.vue'
 import CodeChangesCard from '@/components/CodeChangesCard/CodeChangesCard.vue'
 import StatKpiCard from '@git-dash/ui/components/StatKpiCard/StatKpiCard.vue'
+import { storeToRefs } from 'pinia'
+import { useTimeRangeStore } from '@/stores/timeRange.ts'
 
 const props = defineProps<{
   collaborator: string
 }>()
+
+const { getHumanReadableTimeRange } = storeToRefs(useTimeRangeStore())
+const humanTimeRange = getHumanReadableTimeRange
 
 // Pass the login as a getter function so the composable reacts when tabs change
 const {
