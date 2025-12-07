@@ -6,7 +6,7 @@ public interface IDbService
 {
     Task<User?> GetUserbyUsername(string username);
 
-    void UpsertVisitedRepository(String decodedFullName, int userId);
+    Task UpsertVisitedRepository(String decodedFullName, int userId);
 
-    void InsertNewLog(int userId, string visitedEndpoint);
+    Task InsertNewLog(int userId, string visitedEndpoint);
 }
