@@ -4,7 +4,13 @@
         <RepositoryCard :repo="currentRepository" :clickable="false"/>
       </v-col>
     </v-row>
-    <div v-if="isLoading" class="d-flex justify-center pa-12">
+  <div v-if="error">
+    <DataErrorAlert
+      :resource-name="currentRepository?.fullName"
+      @retry="fetchStats"
+    />
+  </div>
+    <div v-else-if="isLoading" class="d-flex justify-center pa-12">
       <v-progress-circular indeterminate color="primary" />
     </div>
   <div v-else>
@@ -63,10 +69,11 @@ import StatKpiCard from '@git-dash/ui/components/StatKpiCard/StatKpiCard.vue'
 import RepositoryCard from '@/components/RepositoryCard/RepositoryCard.vue'
 import OpenWorkCard from '@/components/OpenWorkCard/OpenWorkCard.vue'
 import PeakActivityCard from '@/components/PeakActivityCard/PeakActivityCard.vue'
+import DataErrorAlert from '@/components/DataErrorAlert/DataErrorAlert.vue'
 
 // Logic
 const { getHumanReadableTimeRange } = storeToRefs(useTimeRangeStore())
-const { stats, currentRepository, isLoading } = useRepositoryOverview()
+const { stats, currentRepository, error, isLoading, fetchStats } = useRepositoryOverview()
 
 // Create a reactive alias for the template
 const humanTimeRange = getHumanReadableTimeRange

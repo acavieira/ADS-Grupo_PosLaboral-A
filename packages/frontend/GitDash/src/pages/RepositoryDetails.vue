@@ -16,7 +16,20 @@
           </div>
           <div v-else-if="activeTab === 'collaborators'">
             <v-col cols="12">
-              <CollaboratorsTable :collaborators="collaborators" />
+
+              <DataErrorAlert
+                v-if="error"
+                :resource-name="currentRepository?.fullName"
+                @retry="fetchCollaborators"
+              >
+                We could not retrieve the list of collaborators.
+                This usually happens because you lack permissions to view members of this repository.
+              </DataErrorAlert>
+
+              <CollaboratorsTable
+                v-else
+                :collaborators="collaborators"
+              />
             </v-col>
           </div>
           <div v-else-if="activeCollaborator">
@@ -36,8 +49,14 @@ import Overview from '@/pages/Overview.vue'
 import CollaboratorsTable from '@/components/Collaborators/Collaborators.vue'
 import PersonalStats from '@/pages/PersonalStats.vue'
 import { useRepositoryCollaborators } from '@/composables/useRepositoryCollaborators'
+import { useRepositoryStore } from '@/stores/repository.ts'
+import { storeToRefs } from 'pinia'
+import DataErrorAlert from '@/components/DataErrorAlert/DataErrorAlert.vue'
 
-const { collaborators, isLoading } = useRepositoryCollaborators()
+const { collaborators, isLoading, error, fetchCollaborators } = useRepositoryCollaborators()
+
+const repoStore = useRepositoryStore()
+const { currentRepository } = storeToRefs(repoStore)
 
 const baseTabs: ITab[] = [
   { key: 'overview', title: 'Repository Overview' },

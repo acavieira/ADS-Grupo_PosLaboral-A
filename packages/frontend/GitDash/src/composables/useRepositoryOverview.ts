@@ -40,6 +40,7 @@ export function useRepositoryOverview() {
   const isLoading = ref(false)
 
   // Initial State
+  const error = ref<any>(null)
   const stats = ref<IRepoOverviewStats>({
     commits: 0,
     commitsLabel: 'No recent activity',
@@ -56,7 +57,7 @@ export function useRepositoryOverview() {
 
   const fetchStats = async () => {
     if (!getCurrentRepositoryFullName.value) return
-
+    error.value = null
     isLoading.value = true
     try {
       const encodedName = encodeURIComponent(getCurrentRepositoryFullName.value)
@@ -82,6 +83,7 @@ export function useRepositoryOverview() {
         teamSize: dto.peakActivity.teamSize,
       }
     } catch (e) {
+      error.value = e
       logger.error('Error loading repo stats', {
         error: e,
         repo: getCurrentRepositoryFullName.value,
@@ -98,6 +100,7 @@ export function useRepositoryOverview() {
   return {
     stats,
     isLoading,
+    error,
     currentRepository,
     fetchStats
   }

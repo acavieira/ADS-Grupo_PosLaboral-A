@@ -20,9 +20,27 @@
           </v-col>
         </v-row>
 
+        <v-row v-if="urlError" class="mt-4">
+          <v-col cols="12">
+            <v-alert
+              type="error"
+              title="Unable to load repository"
+              closable
+              variant="tonal"
+              @click:close="urlError = ''"
+            >
+<!--              {{ urlError }}-->
+              You don't have enough permissions to access statistics of this repository
+            </v-alert>
+          </v-col>
+        </v-row>
+
         <v-row class="mt-6" align="stretch">
           <v-col cols="12" md="6">
-            <RepoUrlInputCard @load-url="handleLoadByUrl" />
+            <RepoUrlInputCard
+              :loading="isUrlLoading"
+              @load-url="handleLoadByUrl"
+            />
           </v-col>
 
           <v-col cols="12" md="6">
@@ -45,7 +63,7 @@
 
             <v-row v-else dense>
               <v-col
-                v-for="repo in allRepositories"
+                v-for="repo in recentRepositories"
                 :key="repo.fullName"
                 cols="12"
               >
@@ -56,7 +74,7 @@
                 />
               </v-col>
 
-              <v-col v-if="allRepositories.length === 0" cols="12">
+              <v-col v-if="recentRepositories.length === 0" cols="12">
                 <p class="text-caption text-center text-grey">No recent repositories found.</p>
               </v-col>
             </v-row>
@@ -69,7 +87,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, inject } from 'vue'
+import { onMounted, inject, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import BaseButton from '@/components/BaseButton/BaseButton.vue'
 import RepositoryCard from '@/components/RepositoryCard/RepositoryCard.vue'
@@ -77,13 +95,11 @@ import RepoUrlInputCard from '@/components/RepoUrlInputCard/RepoUrlInputCard.vue
 import UserRepositoriesCard from '@/components/UserRepositoriesCard/UserRepositoriesCard.vue'
 
 import { ApiClientKey } from '@/plugins/api'
-import { LoggerKey } from '@/plugins/logger'
 import { useRepositoryStore } from '@/stores/repository'
 import type { IRepository } from '@/models/IRepository'
 import { useRepositories } from '@/composables/useRepositories'
 
 const api = inject(ApiClientKey)
-const logger = inject(LoggerKey)
 const router = useRouter()
 const repoStore = useRepositoryStore()
 
@@ -91,17 +107,38 @@ const {
   allRepositories,
   recentRepositories,
   isLoading,
-  init: initRepositories
+  isUrlLoading, // New loading state
+  init: initRepositories,
+  loadRepositoryByUrl // New function
 } = useRepositories()
+
+const urlError = ref('')
 
 const handleSelectRepo = (repo: IRepository) => {
   repoStore.setCurrentRepository(repo)
   router.push({ name: 'repository-details' })
 }
 
-const handleLoadByUrl = (url: string) => {
-  logger?.info('Load repository by URL clicked', { url })
-  // Implement actual loading logic here
+const handleLoadByUrl = async (url: string) => {
+  urlError.value = '' // Clear previous errors
+
+  try {
+    // 1. Fetch from backend
+    const repo = await loadRepositoryByUrl(url)
+
+    // 2. Set to store and redirect
+    if (repo) {
+      repoStore.setCurrentRepository(repo)
+      router.push({ name: 'repository-details' })
+    }
+  } catch (e: any) {
+    // 3. Handle 404 / Access Denied
+    if (e.response && e.response.status === 404) {
+      urlError.value = "You do not have access to this repository, or it does not exist."
+    } else {
+      urlError.value = "An unexpected error occurred while loading the repository."
+    }
+  }
 }
 
 const handleLogout = async () => {
