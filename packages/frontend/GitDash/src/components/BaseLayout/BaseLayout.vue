@@ -41,7 +41,7 @@
 </template>
 
 <script setup lang="ts">
-import type { Tab } from '@/models/Tab.ts'
+import type { ITab } from '@/models/ITab.ts'
 import Tabs from '@/components/Tabs/Tabs.vue'
 import { BaseButton } from '@/components/BaseButton'
 import { useRouter } from 'vue-router'
@@ -74,7 +74,7 @@ const timeRangeModel = computed({
 })
 
 const props = defineProps<{
-  tabs: Tab[]
+  tabs: ITab[]
   activeTab: string
 }>()
 

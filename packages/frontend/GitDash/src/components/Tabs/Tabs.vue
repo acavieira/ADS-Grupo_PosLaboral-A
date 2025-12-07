@@ -35,11 +35,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { Tab } from '@/models/Tab.ts'
+import type { ITab } from '@/models/ITab.ts'
 
 // --- Component Props ---
 const props = defineProps<{
-  tabs: Tab[];
+  tabs: ITab[];
   activeTab: string;
 }>();
 

@@ -19,8 +19,8 @@
               <CollaboratorsTable :collaborators="collaborators" />
             </v-col>
           </div>
-          <div v-else-if="collaboratorTabs.some(tab => tab.key === activeTab)">
-            <PersonalStats />
+          <div v-else-if="activeCollaborator">
+            <PersonalStats :collaborator="activeCollaborator.login" :key="activeCollaborator.login"/>
           </div>
         </template>
       </v-card-text>
@@ -30,7 +30,7 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { Tab } from '@/models/Tab.ts'
+import type { ITab } from '@/models/ITab.ts'
 import BaseLayout from '@/components/BaseLayout/BaseLayout.vue'
 import Overview from '@/pages/Overview.vue'
 import CollaboratorsTable from '@/components/Collaborators/Collaborators.vue'
@@ -39,12 +39,12 @@ import { useRepositoryCollaborators } from '@/composables/useRepositoryCollabora
 
 const { collaborators, isLoading } = useRepositoryCollaborators()
 
-const baseTabs: Tab[] = [
+const baseTabs: ITab[] = [
   { key: 'overview', title: 'Repository Overview' },
   { key: 'collaborators', title: 'Collaborators' },
 ]
 
-const collaboratorTabs = computed((): Tab[] => {
+const collaboratorTabs = computed((): ITab[] => {
   return collaborators.value.map((collaborator) => ({
     key: collaborator.login,
     title: collaborator.login,
@@ -52,11 +52,15 @@ const collaboratorTabs = computed((): Tab[] => {
   }))
 })
 
-const tabs = computed((): Tab[] => {
+const tabs = computed((): ITab[] => {
   return [...baseTabs, ...collaboratorTabs.value]
 })
 
 const activeTab = ref<string>('overview')
+
+const activeCollaborator = computed(() => {
+  return collaborators.value.find(c => c.login === activeTab.value)
+})
 
 const handleTabChange = (key: string) => {
   activeTab.value = key

@@ -1,72 +1,54 @@
 <template>
-  <div>
+  <div v-if="loadingTotals && !totals.commits" class="d-flex justify-center pa-12">
+    <v-progress-circular indeterminate color="primary" />
+  </div>
+
+  <div v-else>
     <v-row class="mb-4">
-      <v-col cols="12" md="3">
-        <v-skeleton-loader v-if="loadingTotals" type="card" height="120" />
-        <StatKpiCard
-          v-else
-          title="Total Commits"
-          :value="errorTotals ? '-' : totals.commits"
-          caption="Commits contributed"
-          icon="mdi-source-branch"
-        />
+      <v-col cols="12" sm="6" md="4" lg="3"> <StatKpiCard
+        title="Total Commits"
+        :value="totals.commits"
+        caption="All time contributions"
+        icon="mdi-source-branch"
+      />
       </v-col>
 
-      <v-col cols="12" md="3">
-        <v-skeleton-loader v-if="loadingTotals" type="card" height="120" />
+      <v-col cols="12" sm="6" md="4" lg="3">
         <StatKpiCard
-          v-else
           title="Pull Requests"
-          :value="errorTotals ? '-' : totals.pullRequests"
-          caption="PRs opened"
-          icon="mdi-git"
+          :value="totals.prTotal"
+          :caption="`${totals.prMerged} merged`"
+          icon="mdi-source-pull"
         />
       </v-col>
 
-      <v-col cols="12" md="3">
-        <v-skeleton-loader v-if="loadingTotals" type="card" height="120" />
+      <v-col cols="12" sm="6" md="4" lg="3">
         <StatKpiCard
-          v-else
           title="Issues"
-          :value="errorTotals ? '-' : totals.issues"
-          caption="Issues created"
+          :value="totals.issueTotal"
+          :caption="`${totals.issueClosed} closed`"
           icon="mdi-alert-circle-outline"
         />
       </v-col>
 
-      <v-col cols="12" md="3">
-        <v-skeleton-loader v-if="loadingTotals" type="card" height="120" />
+      <v-col cols="12" sm="6" md="4" lg="3">
         <StatKpiCard
-          v-else
-          title="Role"
-          :value="errorTotals ? '-' : totals.role"
-          caption="Repository permission"
-          icon="mdi-account-badge-outline"
+          title="Reviews Given"
+          :value="totals.reviews"
+          caption="Participated in review"
+          icon="mdi-eye-outline"
         />
       </v-col>
     </v-row>
 
     <v-row>
       <v-col cols="12" md="6">
-        <BaseCard v-if="loadingActivity" class="d-flex align-center justify-center" style="height: 300px">
-          <v-progress-circular indeterminate color="primary" />
-        </BaseCard>
-
-        <BaseCard v-else-if="errorActivity" class="d-flex align-center justify-center text-medium-emphasis" style="height: 300px">
-          <div class="text-center">
-            <v-icon size="40" class="mb-2">mdi-alert-circle-outline</v-icon>
-            <div>Failed to load activity graph</div>
-          </div>
-        </BaseCard>
-
+        <v-skeleton-loader v-if="loadingActivity" type="card" height="300" />
         <StatisticGraph v-else :items="chartData" />
       </v-col>
 
       <v-col cols="12" md="6">
-        <BaseCard v-if="loadingChanges" class="d-flex align-center justify-center" style="height: 300px">
-          <v-progress-circular indeterminate color="primary" />
-        </BaseCard>
-
+        <v-skeleton-loader v-if="loadingChanges" type="card" height="300" />
         <CodeChangesCard
           v-else
           :additions="codeChanges.additions"
@@ -78,19 +60,24 @@
 </template>
 
 <script setup lang="ts">
-import { useRoute } from 'vue-router'
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { usePersonalStats } from '@/composables/usePersonalStats'
+
+// Components
 import StatisticGraph from '@/components/StatisticGraph/StatisticGraph.vue'
 import CodeChangesCard from '@/components/CodeChangesCard/CodeChangesCard.vue'
-import { usePersonalStats } from '@/composables/usePersonalStats'
 import StatKpiCard from '@git-dash/ui/components/StatKpiCard/StatKpiCard.vue'
 
-const route = useRoute()
-const login = (route.query.login as string) || ''
+const props = defineProps<{
+  collaborator: string
+}>()
 
+// Pass the login as a getter function so the composable reacts when tabs change
 const {
-  totals, loadingTotals, errorTotals,
-  codeChanges, loadingChanges,
-  chartData, loadingActivity, errorActivity
-} = usePersonalStats(login)
+  totals,
+  codeChanges,
+  chartData,
+  loadingTotals,
+  loadingActivity,
+  loadingChanges
+} = usePersonalStats(props.collaborator)
 </script>

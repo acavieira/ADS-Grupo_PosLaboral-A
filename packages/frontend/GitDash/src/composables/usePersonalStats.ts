@@ -5,38 +5,11 @@ import { LoggerKey } from '@/plugins/logger'
 import { useRepositoryStore } from '@/stores/repository'
 import { useTimeRangeStore } from '@/stores/timeRange'
 import type { CommitData } from '@/components/StatisticGraph/StatisticGraph.vue'
+import type { IRepoContributionStatsDTO } from '@/models/IRepoContributionStatsDTO.ts'
+import type { IActivityDTO } from '@/models/IActivityDTO.ts'
+import type { ICodeChangeStatsDTO } from '@/models/ICodeChangeStatsDTO.ts'
+import type { IPersonalTotals } from '@/models/IPersonalTotals.ts'
 
-// --- DTO Interfaces (Matching Backend) ---
-
-interface RepoContributionStatsDTO {
-  commits: {
-    totalCount: number
-  }
-  pullRequests: {
-    totalCount: number
-    mergedCount: number
-  }
-  issues: {
-    totalCount: number
-    closedCount: number
-  }
-  reviews: {
-    givenCount: number
-  }
-  // Assuming 'role' might still be sent alongside these stats,
-  // or it defaults to a string if not present in this specific DTO
-  role?: string
-}
-
-interface CodeChangeStatsDTO {
-  additions: number
-  deletions: number
-}
-
-// The backend returns a simple list of numbers [0, 5, 10, ...]
-type ActivityDTO = number[]
-
-// --- Composable ---
 
 export function usePersonalStats(login: string) {
   const api = inject(ApiClientKey)
@@ -48,11 +21,18 @@ export function usePersonalStats(login: string) {
 
   // --- State ---
 
-  const totals = ref({ commits: 0, pullRequests: 0, issues: 0, role: 'contributor' })
+  const totals = ref<IPersonalTotals>({
+    commits: 0,
+    prTotal: 0,
+    prMerged: 0,
+    issueTotal: 0,
+    issueClosed: 0,
+    reviews: 0
+  })
   const loadingTotals = ref(false)
   const errorTotals = ref(false)
 
-  const codeChanges = ref({ additions: 0, deletions: 0 })
+  const codeChanges = ref<ICodeChangeStatsDTO>({ additions: 0, deletions: 0 })
   const loadingChanges = ref(false)
   const errorChanges = ref(false)
 
@@ -66,7 +46,7 @@ export function usePersonalStats(login: string) {
     return {
       repo: encodeURIComponent(getCurrentRepositoryFullName.value),
       user: encodeURIComponent(login),
-      time: encodeURIComponent(timeRange.value)
+      time: encodeURIComponent(timeRange.value),
     }
   }
 
@@ -74,19 +54,25 @@ export function usePersonalStats(login: string) {
 
   // 1. Fetch Totals (RepoContributionStats)
   const fetchTotals = async () => {
-    const params = getParams(); if (!params) return
-    loadingTotals.value = true; errorTotals.value = false
+    const params = getParams()
+    if (!params) return
+    loadingTotals.value = true
+    errorTotals.value = false
 
     try {
-      const url = `/api/github/collaborators/${params.repo}/${params.user}/stats/${params.time}`
-      const res = await api.get<RepoContributionStatsDTO>(url)
+      const url = `/api/github/repositories/${params.repo}/collaborators/${params.user}/activity?range=${params.time}`
+      const res = await api.get<IRepoContributionStatsDTO>(url)
 
-      // Map the nested DTO structure to flat UI state
       totals.value = {
         commits: res.commits.totalCount,
-        pullRequests: res.pullRequests.totalCount, // Or mergedCount, depending on preference
-        issues: res.issues.totalCount,             // Or closedCount
-        role: res.role || 'contributor'
+
+        prTotal: res.pullRequests.totalCount,
+        prMerged: res.pullRequests.mergedCount,
+
+        issueTotal: res.issues.totalCount,
+        issueClosed: res.issues.closedCount,
+
+        reviews: res.reviews.givenCount
       }
     } catch (e) {
       errorTotals.value = true
@@ -98,16 +84,18 @@ export function usePersonalStats(login: string) {
 
   // 2. Fetch Code Changes (CodeChangeStats)
   const fetchChanges = async () => {
-    const params = getParams(); if (!params) return
-    loadingChanges.value = true; errorChanges.value = false
+    const params = getParams()
+    if (!params) return
+    loadingChanges.value = true
+    errorChanges.value = false
 
     try {
-      const url = `/api/github/collaborators/${params.repo}/${params.user}/changes/${params.time}`
-      const res = await api.get<CodeChangeStatsDTO>(url)
+      const url = `/api/github/repositories/${params.repo}/collaborators/${params.user}/code-changes?range=${params.time}`
+      const res = await api.get<ICodeChangeStatsDTO>(url)
 
       codeChanges.value = {
         additions: res.additions,
-        deletions: res.deletions
+        deletions: res.deletions,
       }
     } catch (e) {
       errorChanges.value = true
@@ -118,20 +106,21 @@ export function usePersonalStats(login: string) {
 
   // 3. Fetch Activity (List<number>)
   const fetchActivity = async () => {
-    const params = getParams(); if (!params) return
-    loadingActivity.value = true; errorActivity.value = false
+    const params = getParams()
+    if (!params) return
+    loadingActivity.value = true
+    errorActivity.value = false
 
     try {
-      const url = `/api/github/collaborators/${params.repo}/${params.user}/activity/${params.time}`
-      const res = await api.get<ActivityDTO>(url)
-
+      const url = `/api/github/repositories/${params.repo}/collaborators/${params.user}/weekly-activity`
+      const res = await api.get<IActivityDTO>(url)
+      const data = res.weeks;
       // Map the array of numbers [10, 5, 0...] to chart objects { label: 'W1', value: 10 }
       // The backend ensures 12 weeks, so we just map the index.
-      chartData.value = res.map((value, index) => ({
+      chartData.value = data.map((value, index) => ({
         label: `W${index + 1}`,
-        value: value
+        value: value,
       }))
-
     } catch (e) {
       errorActivity.value = true
     } finally {
@@ -140,15 +129,25 @@ export function usePersonalStats(login: string) {
   }
 
   // --- Watcher ---
-  watch([timeRange, getCurrentRepositoryFullName], () => {
-    fetchTotals()
-    fetchChanges()
-    fetchActivity()
-  }, { immediate: true })
+  watch(
+    [timeRange, getCurrentRepositoryFullName],
+    () => {
+      fetchTotals()
+      fetchChanges()
+      fetchActivity()
+    },
+    { immediate: true },
+  )
 
   return {
-    totals, loadingTotals, errorTotals,
-    codeChanges, loadingChanges, errorChanges,
-    chartData, loadingActivity, errorActivity
+    totals,
+    loadingTotals,
+    errorTotals,
+    codeChanges,
+    loadingChanges,
+    errorChanges,
+    chartData,
+    loadingActivity,
+    errorActivity,
   }
 }
