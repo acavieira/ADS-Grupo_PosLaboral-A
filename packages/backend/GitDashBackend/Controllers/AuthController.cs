@@ -1,13 +1,14 @@
-﻿using Microsoft.AspNetCore.Authentication;
+﻿using GitDashBackend.Data;
+using GitDashBackend.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System;
-using System.Threading.Tasks;
-using GitDashBackend.Data;
-using GitDashBackend.Models;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 using Microsoft.Extensions.Configuration;
+using System;
+using System.Security.Claims;
+using System.Threading.Tasks;
 
 namespace GitDashBackend.Controllers;
 
@@ -76,7 +77,16 @@ public class AuthController : ControllerBase
                      ?? "http://localhost:5173";
 
         // Redirect back to frontend
-        var finalUrl = returnUrl ?? frontendUrl + "/dashboard";
+        var finalUrl = returnUrl ?? frontendUrl + "/repository-choice";
         return Redirect(finalUrl);
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout()
+    {
+        // This instructs the browser to delete the cookie used for authentication
+        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+
+        return Ok(new { message = "Logged out successfully" });
     }
 }
