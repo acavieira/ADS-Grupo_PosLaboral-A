@@ -19,7 +19,7 @@ public class DbService : IDbService
     }
 
     // Upsert Repository
-    public async void UpsertVisitedRepository(String decodedFullName, int userId)
+    public async Task UpsertVisitedRepository(String decodedFullName, int userId)
     {
         var now = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
         
@@ -47,9 +47,11 @@ public class DbService : IDbService
             _dbContext.Repositories.Add(newRepo);
             
         }
+        
+        await _dbContext.SaveChangesAsync();
     }
 
-    public void InsertNewLog(int userId, string visitedEndpoint)
+    public async Task InsertNewLog(int userId, string visitedEndpoint)
     {
         _dbContext.Logs.Add(new Models.Log
         {
@@ -57,5 +59,7 @@ public class DbService : IDbService
             VisitedEndpoint = visitedEndpoint,
             Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
         });
+        
+        await _dbContext.SaveChangesAsync();
     }
 }

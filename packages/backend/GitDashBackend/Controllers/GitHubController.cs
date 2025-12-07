@@ -282,16 +282,16 @@ public class GitHubController : ControllerBase
             if (userId != null)
             {
                 // A. Add Log
-                _dbService.InsertNewLog(userId.Value, HttpContext.Request.Path);
+                await _dbService.InsertNewLog(userId.Value, HttpContext.Request.Path);
                 
                 // Save changes in db
-                await _dbContext.SaveChangesAsync();
+                //await _dbContext.SaveChangesAsync();
 
                 // B. Upsert Repository
-                _dbService.UpsertVisitedRepository(decodedFullName, userId.Value);
+                await _dbService.UpsertVisitedRepository(decodedFullName, userId.Value);
 
                 // Save changes in db
-                await _dbContext.SaveChangesAsync();
+                //await _dbContext.SaveChangesAsync();
             }
             RepoOverviewStatsDto statsOverview = await _gitHubService.GetRepositoryStatsAsync(accessToken, decodedFullName, timeRange);
             if (statsOverview == null)
