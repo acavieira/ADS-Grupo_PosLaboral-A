@@ -1,4 +1,5 @@
 ﻿using GitDashBackend.Domain.DTOs;
+using GitDashBackend.Models;
 using GitDashBackend.Services.Interfaces;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -100,6 +101,96 @@ public class GitHubController : ControllerBase
             return StatusCode(500, new { error = "An error occurred while fetching repositories" });
         }
     }
+    
+/// <summary>
+/// Retrieves the authenticated user's recently visited GitHub repositories.
+/// Filters the user's GitHub repositories to show only those present in the local database history,
+/// sorted by the most recently visited.
+/// </summary>
+/// <returns>A filtered and sorted list of recently visited repositories.</returns>
+[Authorize]
+[HttpGet("recentRepositories")]
+[ProducesResponseType(typeof(RepositoriesDto), StatusCodes.Status200OK)]
+[ProducesResponseType(typeof(object), StatusCodes.Status400BadRequest)]
+[ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
+[ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)] // Added 404 documentation
+[ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
+public async Task<IActionResult> GetRecentRepositories()
+{
+    // Take token from the same place as /api/github/test
+    var accessToken = await HttpContext.GetTokenAsync("access_token");
+    if (string.IsNullOrEmpty(accessToken))
+    {
+        // user is not authenticated via GitHub or token not saved
+        return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
+    }
+
+    try
+    {
+        // Register access log
+        var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
+        var username = identity?.FindFirst(System.Security.Claims.ClaimTypes.Name)?.Value;
+        
+        if (!string.IsNullOrEmpty(username))
+        {
+            var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
+            if (user != null)
+            {
+                _dbContext.Logs.Add(new Models.Log
+                {
+                    UserId = user.Id,
+                    VisitedEndpoint = HttpContext.Request.Path,
+                    Created = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified)
+                });
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
+        // Fetch repositories from GitHub
+        RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(accessToken);
+
+        if (!string.IsNullOrEmpty(username))
+        {
+            // 1. Await the database results to get the actual list
+            List<Repository> localRepos = await _dbService.GetRecentRepositories(username);
+
+            // CHECK: If no visited repositories exist in the DB, return 404
+            if (localRepos == null || !localRepos.Any())
+            {
+                return NotFound(new { error = "No visited repositories found." });
+            }
+
+            // 2. Create a Dictionary for fast lookup (O(1))
+            // Key: Repository Name (matches FullName), Value: LastVisited Date
+            var visitedMap = localRepos.ToDictionary(
+                r => r.Name, 
+                r => r.LastVisited, 
+                StringComparer.OrdinalIgnoreCase // Case-insensitive matching
+            );
+
+            // 3. Filter and Sort
+            repositories.repositories = repositories.repositories
+                .Where(r => visitedMap.ContainsKey(r.FullName)) // KEEP only if it exists in DB
+                .OrderByDescending(r => visitedMap[r.FullName]) // SORT by DB LastVisited date
+                .ToList();
+
+            // 4. Update the Count
+            // Since we filtered items out, the original count is no longer valid.
+            repositories.count = repositories.repositories.Count;
+        }
+
+        return Ok(repositories);
+    }
+    catch (Octokit.AuthorizationException)
+    {
+        return Unauthorized(new { error = "Invalid or expired GitHub token" });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error fetching repositories");
+        return StatusCode(500, new { error = "An error occurred while fetching repositories" });
+    }
+}
 
 
     /// <summary>

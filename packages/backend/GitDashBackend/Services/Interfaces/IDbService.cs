@@ -9,4 +9,6 @@ public interface IDbService
     Task UpsertVisitedRepository(String decodedFullName, int userId);
 
     Task InsertNewLog(int userId, string visitedEndpoint);
+
+    Task<List<Repository>> GetRecentRepositories (string username);
 }
