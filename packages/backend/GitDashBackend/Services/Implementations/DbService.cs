@@ -62,4 +62,15 @@ public class DbService : IDbService
         
         await _dbContext.SaveChangesAsync();
     }
+    
+    public async Task<List<Repository>> GetRecentRepositories(string username)
+    {
+        return await _dbContext.Repositories
+            .AsNoTracking()
+            .Include(r => r.User)
+            .Where(r => r.User.Username == username)
+            .OrderByDescending(r => r.LastVisited)
+            .Take(3)
+            .ToListAsync();
+    }
 }
