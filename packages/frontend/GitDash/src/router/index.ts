@@ -1,12 +1,12 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import Login from '@/pages/Login.vue';
-import Dashboard from '@/pages/Dashboard.vue';
-import Data from '@/pages/Data.vue'
+import RepositoryChoice from '@/pages/RepositoryChoice.vue';
+import RepositoryDetails from '@/pages/RepositoryDetails.vue'
 
 const routes = [
-  { path: '/', component: Login },       // agora o login é a página inicial
-  { path: '/dashboard', component: Dashboard },
-  { path: '/stats', name: 'stats', component: Data },
+  { path: '/', component: Login },
+  { path: '/repository-choice', component: RepositoryChoice },
+  { path: '/repository-details', name: 'repository-details', component: RepositoryDetails },
 
 ];
 

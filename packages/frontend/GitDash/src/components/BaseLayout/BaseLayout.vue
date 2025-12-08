@@ -1,24 +1,25 @@
 <template>
   <v-app>
-    <v-main>
-      <v-container class="bg-grey-lighten-5">
+    <v-main class="bg-grey-lighten-5">
+      <v-container class="mx-auto px-6 pt-6" style="max-width: 1100px;">
         <v-row class="align-center mb-4">
           <v-col cols="12" md="8" class="d-flex align-center ga-4">
-            <BaseButton color="grey" class="text-none" @click="goBack">
+            <BaseButton color="grey" @click="goBack">
               <template #default>
                 <v-icon start>mdi-arrow-left</v-icon>
                 Change Repository
               </template>
             </BaseButton>
 
-            <span class="text-subtitle-1 font-weight-medium">
+            <span class="text-h6 font-weight-medium">
               {{ getCurrentRepositoryFullName }}
             </span>
           </v-col>
 
           <v-col cols="12" md="4" class="d-flex justify-end">
             <v-select
-              v-model="timeRangeModel" :items="timeRanges"
+              v-model="timeRangeModel"
+              :items="timeRanges"
               item-title="title"
               item-value="value"
               density="comfortable"
@@ -40,13 +41,13 @@
 </template>
 
 <script setup lang="ts">
-import type { Tab } from '@/models/Tab.ts'
+import type { ITab } from '@/models/ITab.ts'
 import Tabs from '@/components/Tabs/Tabs.vue'
 import { BaseButton } from '@/components/BaseButton'
 import { useRouter } from 'vue-router'
 import { useRepositoryStore } from '@/stores/repository.ts'
 import { storeToRefs } from 'pinia'
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import { type TimeRange, useTimeRangeStore } from '@/stores/timeRange.ts'
 
 const router = useRouter()
@@ -72,9 +73,8 @@ const timeRangeModel = computed({
   },
 })
 
-
 const props = defineProps<{
-  tabs: Tab[]
+  tabs: ITab[]
   activeTab: string
 }>()
 
@@ -83,13 +83,22 @@ const emit = defineEmits<{
   (e: 'tab-change', key: string): void
 }>()
 
-// ... (Methods and watchers remain the same) ...
 const handleTabChange = (key: string) => {
   emit('update:activeTab', key)
   emit('tab-change', key)
 }
 
 const goBack = () => {
-  router.push('/dashboard')
+  router.push('/repository-choice')
 }
+
+watch(
+  currentRepository,
+  (newRepo) => {
+    if (!newRepo) {
+      goBack()
+    }
+  },
+  { immediate: true },
+)
 </script>
