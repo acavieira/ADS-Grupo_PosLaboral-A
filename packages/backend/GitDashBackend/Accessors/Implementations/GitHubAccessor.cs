@@ -396,25 +396,28 @@ public class GitHubAccessor : IGitHubAccessor
         var decodedFullName = Uri.UnescapeDataString(fullName);
         var (owner, repo) = ParseFullName(decodedFullName);
         var client = CreateClient(token);
-        // Use private helper for date range
         DateTime since = GetStartDateFromTimeRange(range);
         DateTime until = DateTime.UtcNow;
         int additions = 0, deletions = 0;
         try
         {
-            // Filter commits by author and date range
-            var commitRequest = new CommitRequest
+            // Get all pull requests by the collaborator in the date range
+            var prRequest = new PullRequestRequest
             {
-                Author = username,
-                Since = since,
-                Until = until
+                State = ItemStateFilter.All
             };
-            var commits = await client.Repository.Commit.GetAll(owner, repo, commitRequest);
-            foreach (var commit in commits)
+            var allPrs = await client.PullRequest.GetAllForRepository(owner, repo, prRequest);
+            var userPrs = allPrs.Where(pr =>
+                pr.User?.Login?.Equals(username, StringComparison.OrdinalIgnoreCase) == true &&
+                pr.CreatedAt.UtcDateTime >= since && pr.CreatedAt.UtcDateTime <= until
+            ).ToList();
+
+            foreach (var pr in userPrs)
             {
-                // Aggregate additions and deletions
-                additions += commit.Stats?.Additions ?? 0;
-                deletions += commit.Stats?.Deletions ?? 0;
+                // Fetch PR details to get additions/deletions
+                var prDetails = await client.PullRequest.Get(owner, repo, pr.Number);
+                additions += prDetails.Additions;
+                deletions += prDetails.Deletions;
             }
             return new CollaboratorCodeChangesDto { Additions = additions, Deletions = deletions };
         }
