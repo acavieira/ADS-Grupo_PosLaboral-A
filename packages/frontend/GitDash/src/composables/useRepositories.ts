@@ -34,7 +34,7 @@ export function useRepositories() {
 
   const fetchRecentRepositories = async () => {
     try {
-      const res = await api.get<IRepositoryDTO>('/api/github/repositories/recent')
+      const res = await api.get<IRepositoryDTO>('/api/github/recentRepositories')
       recentRepositories.value = res.repositories
     } catch (e) {
       logger.error('Error loading recent repositories', { error: e })
