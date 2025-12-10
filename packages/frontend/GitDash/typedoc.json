@@ -1,0 +1,12 @@
+{
+  "entryPoints": ["./src"],
+  "out": "docs",
+  "plugin": ["typedoc-plugin-vue"],
+  "entryPointStrategy": "expand",
+  "name": "Git-Dash Docs",
+  "includeVersion": true,
+  "exclude": [
+    "**/__tests__/**/*",
+    "**/*.spec.ts"
+  ]
+}

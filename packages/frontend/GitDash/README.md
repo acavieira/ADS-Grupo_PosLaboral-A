@@ -33,28 +33,6 @@ npm run test:unit
 ```
 
 
-### Run End-to-End Tests with [Playwright](https://playwright.dev)
-
-
-```sh
-# Install browsers for the first run
-npx playwright install
-
-
-# When testing on CI, must build the project first
-npm run build
-
-
-# Runs the end-to-end tests
-npm run test:e2e
-# Runs the tests only on Chromium
-npm run test:e2e -- --project=chromium
-# Runs the tests of a specific file
-npm run test:e2e -- tests/example.spec.ts
-# Runs the tests in debug mode
-npm run test:e2e -- --debug
-```
-
 
 ### Lint with [ESLint](https://eslint.org/)
 
@@ -63,6 +41,12 @@ npm run test:e2e -- --debug
 npm run lint
 ```
 
+### Documentation
+
+We use TypeDoc for this project. To generate and view the docs locally:
+
+1. Run: `npm run doc`
+2. Open `docs/index.html` in your browser.
 
 ## Packages Overview
 
@@ -124,17 +108,12 @@ Each feature should live in its own folder with both code and test files.
 ```
 packages/core/
   src/
-    composables/
-      useToggle/
-        useToggle.ts
-        useToggle.spec.ts
-        index.ts
     utils/
       createApiClient/
         createApiClient.ts
         createApiClient.spec.ts
         index.ts
-    index.ts                        # export * from './composables'; export * from './utils'
+    index.ts                   
 ```
 
 
@@ -191,73 +170,3 @@ import { BaseButton } from '@git-dash/ui'
 
 
 ---
-
-
-## Using NVM on Windows
-
-
-This guide explains how to install and use **Node Version Manager (NVM)** on Windows.
-Currently project uses Node 24.x.
-
-
-### 1. Remove Existing Versions of Node.js
-
-
-Before installing NVM, uninstall any existing Node.js installations:
-
-
-- Open **Control Panel** → **Programs** → **Programs and Features**.
-- Find **Node.js** in the list, right-click it, and choose **Uninstall**.
-
-
-### 2. Download and Install NVM
-
-
-Download the Windows NVM installer (nvm-setup.exe) from [this link](https://github.com/coreybutler/nvm-windows/releases) and run the setup. Follow the on-screen instructions to complete the installation.
-
-
-### 3. Verify the Installation
-
-
-Open **Command Prompt** or **PowerShell** and run:
-
-
-```bash
-nvm version
-```
-
-
-If NVM is installed correctly, it will display the installed NVM version.
-
-
-### 4. Basic Commands
-
-
-Here are some commonly used NVM commands on Windows:
-
-
-```bash
-# Install a specific version of Node.js
-nvm install <version>
-
-# Use a specific version of Node.js
-nvm use <version>
-
-# List installed Node.js versions
-nvm list
-
-# List all available Node.js versions to install
-nvm list available
-
-# Uninstall a specific Node.js version
-nvm uninstall <version>
-```
-
-
-### 5. More Information
-
-
-For a full guide on using Node.js and NVM on Windows, see [Microsoft’s documentation](https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-windows).
-
-
-

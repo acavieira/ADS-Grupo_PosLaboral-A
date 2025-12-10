@@ -4,6 +4,11 @@ GitDashBackend/obj/
 GitDashBackend/out/
 GitDashBackend/artifacts/
 
+GitDashBackend.Tests/bin/
+GitDashBackend.Tests/obj/
+GitDashBackend.Tests/out/
+GitDashBackend.Tests/artifacts/
+
 # User-specific files
 *.user
 *.suo
@@ -33,6 +38,7 @@ mono_crash.*
 
 # Scaffolding
 GitDashBackend/ScaffoldingReadMe.txt
+GitDashBackend.Tests/ScaffoldingReadMe.txt
 
 # IDE-specific folders
 .vscode/

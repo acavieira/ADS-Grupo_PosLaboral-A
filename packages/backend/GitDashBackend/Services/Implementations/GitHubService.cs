@@ -1,6 +1,5 @@
-
-using GitDashBackend.Accessors.Interfaces;
 using GitDashBackend.Domain.DTOs;
+using GitDashBackend.Accessors.Interfaces;
 using GitDashBackend.Services.Interfaces;
 
 namespace GitDashBackend.Services.Implementations;
@@ -22,18 +21,61 @@ public class GitHubService : IGitHubService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<RepositoryDto>> GetUserRepositoriesAsync(string token)
+    public async Task<RepositoriesDto> GetUserRepositoriesAsync(string token)
     {
         var cacheKey = $"repos_{token.GetHashCode()}";
-        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetUserRepositoriesAsync(token));
     }
 
-    public async Task<IEnumerable<CommitDto>> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
+    public async Task<CommitsDto> GetRepositoryCommitsByFullNameAsync(string token, string fullName)
     {
         var cacheKey = $"commits_{fullName.Replace("/", "_")}_{token.GetHashCode()}";
-        return await GetOrFetchAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCommitsByFullNameAsync(token, fullName));
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCommitsByFullNameAsync(token, fullName));
     }
     
+    public async Task<CollaboratorsDto> GetRepositoryCollaboratorsAsync(string token, string fullName, string timeRange)
+    {
+        var cacheKey = $"collaborators_{fullName.Replace("/", "_")}_{timeRange}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryCollaboratorsAsync(token, fullName, timeRange));
+    }
+
+    public async Task<RepoOverviewStatsDto> GetRepositoryStatsAsync(string token, string fullName, string timeRange)
+    {
+        var cacheKey = $"stats_{fullName.Replace("/", "_")}_{timeRange}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryStatsAsync(token, fullName, timeRange));
+    }
+
+    public async Task<WeeklyActivityDto?> GetCollaboratorWeeklyActivityAsync(string token, string fullName, string username)
+    {
+        var cacheKey = $"weekly_activity_{fullName.Replace("/", "_")}_{username}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, async () => {
+            var weeks = await _gitHubAccessor.GetCollaboratorWeeklyActivityAsync(token, fullName, username);
+            if (weeks == null)
+                return null;
+            while (weeks.Count < 12)
+                weeks.Insert(0, 0);
+            return new WeeklyActivityDto { Weeks = weeks };
+        });
+    }
+
+    public async Task<CollaboratorActivityDto?> GetCollaboratorActivityAsync(string token, string fullName, string username, string range)
+    {
+        var cacheKey = $"collab_activity_{fullName.Replace("/", "_")}_{username}_{range}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetCollaboratorActivityAsync(token, fullName, username, range));
+    }
+
+    public Task<RepositoryDto?> GetRepositoryByOwnerRepoAsync(string token, string ownerRepo)
+    {
+        var cacheKey = $"repo_lookup_{ownerRepo.Replace("/", "_")}_{token.GetHashCode()}";
+        return GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetRepositoryByOwnerRepoAsync(token, ownerRepo));
+    }
+
+    public async Task<CollaboratorCodeChangesDto?> GetCollaboratorCodeChangesAsync(string token, string fullName, string username, string range)
+    {
+        var cacheKey = $"code_changes_{fullName.Replace("/", "_")}_{username}_{range}_{token.GetHashCode()}";
+        return await GetOrFetchSingleAsync(cacheKey, () => _gitHubAccessor.GetCollaboratorCodeChangesAsync(token, fullName, username, range));
+    }
+
     // Generic cache helper for collections
     private async Task<IEnumerable<T>> GetOrFetchAsync<T>(string cacheKey, Func<Task<IEnumerable<T>>> fetchFunc)
     {
@@ -53,7 +95,7 @@ public class GitHubService : IGitHubService
     }
 
     // Generic cache helper for single objects
-    private async Task<T> GetOrFetchSingleAsync<T>(string cacheKey, Func<Task<T>> fetchFunc) where T : class
+    private async Task<T> GetOrFetchSingleAsync<T>(string cacheKey, Func<Task<T>> fetchFunc) where T : class?
     {
         var cachedData = await _redisAccessor.GetAsync<T>(cacheKey);
         if (cachedData != null)
@@ -68,4 +110,6 @@ public class GitHubService : IGitHubService
         await _redisAccessor.SetAsync(cacheKey, data, _cacheExpiration);
         return data;
     }
+
+
 }

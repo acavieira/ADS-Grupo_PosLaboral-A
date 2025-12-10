@@ -1,3 +1,6 @@
+// For more info, see https://github.com/storybookjs/eslint-plugin-storybook#configuration-flat-config-format
+import storybook from "eslint-plugin-storybook";
+
 import { globalIgnores } from 'eslint/config'
 import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescript'
 import pluginVue from 'eslint-plugin-vue'
@@ -20,12 +23,34 @@ export default defineConfigWithVueTs(
 
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommended,
-  
+
+  {
+    name: 'app/override-ts-rules',
+    rules: {
+      // Change unused variables to warning,
+      // and completely ignore anything that starts with an underscore.
+      '@typescript-eslint/no-unused-vars': [
+        'warn',
+        {
+          // Ignore arguments (function parameters) starting with _
+          'argsIgnorePattern': '^_',
+          // Ignore variables starting with _
+          'varsIgnorePattern': '^_',
+          // Ignore catch block errors starting with _
+          'caughtErrorsIgnorePattern': '^_',
+        }
+      ],
+
+      // 2. Change 'any' type from error to warning
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+
   {
     ...pluginVitest.configs.recommended,
     files: ['src/**/__tests__/*'],
   },
-  
+
   {
     ...pluginPlaywright.configs['flat/recommended'],
     files: ['e2e/**/*.{test,spec}.{js,ts,jsx,tsx}'],

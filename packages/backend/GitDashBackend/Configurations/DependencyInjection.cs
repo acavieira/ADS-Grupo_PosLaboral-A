@@ -1,4 +1,4 @@
-﻿using GitDashBackend.Services;
+﻿﻿using GitDashBackend.Services;
 
 namespace GitDashBackend.Configurations;
 
@@ -11,14 +11,13 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddProjectServices(this IServiceCollection services)
     {
-        services.AddScoped<IExampleEndpointsService, ExampleEndpointsService>();
-        
         // Register Accessors (Infrastructure Layer)
         services.AddScoped<IGitHubAccessor, GitHubAccessor>();
         services.AddScoped<IRedisAccessor, RedisAccessor>();
 
         // Register Services (Application Layer)
         services.AddScoped<IGitHubService, GitHubService>();
+        services.AddScoped<IDbService, DbService>();
 
         return services;
     }
