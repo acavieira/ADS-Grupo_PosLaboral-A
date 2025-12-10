@@ -24,7 +24,7 @@ const config: StorybookConfig = {
   viteFinal: async (cfg) => {
     cfg.plugins = cfg.plugins || []
     const hasVue = cfg.plugins.some((p: any) => p?.name === 'vite:vue')
-    if (!hasVue) cfg.plug1s.push(vue())
+    if (!hasVue) cfg.plugins.push(vue())
     cfg.resolve = {
       ...(cfg.resolve || {}),
       dedupe: ['vue'],

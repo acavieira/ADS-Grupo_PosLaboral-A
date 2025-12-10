@@ -30,8 +30,8 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
-import BaseButton from '@/components/BaseButton/BaseButton.vue'
+import { BaseButton } from '../BaseButton'
+import { BaseCard } from '../BaseCard'
 
 const emit = defineEmits<{
   (e: 'load-url', url: string): void

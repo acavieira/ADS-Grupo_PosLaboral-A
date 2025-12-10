@@ -65,7 +65,7 @@ import { usePersonalStats } from '@/composables/usePersonalStats'
 // Components
 import StatisticGraph from '@/components/StatisticGraph/StatisticGraph.vue'
 import CodeChangesCard from '@/components/CodeChangesCard/CodeChangesCard.vue'
-import StatKpiCard from '@git-dash/ui/components/StatKpiCard/StatKpiCard.vue'
+import { StatKpiCard } from '@git-dash/ui'
 import { storeToRefs } from 'pinia'
 import { useTimeRangeStore } from '@/stores/timeRange.ts'
 

@@ -40,9 +40,7 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-//import { BACKEND_URL } from '@/config'
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
-import BaseButton from '@/components/BaseButton/BaseButton.vue'
+import { BaseButton, BaseCard } from '@git-dash/ui'
 
 const loading = ref(false)
 const error = ref('')

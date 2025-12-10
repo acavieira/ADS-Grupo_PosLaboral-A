@@ -64,7 +64,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 import type { IRepository } from '@/models/IRepository.ts'
 
 interface Props {

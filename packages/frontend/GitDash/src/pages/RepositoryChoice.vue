@@ -37,7 +37,7 @@
 
         <v-row class="mt-6" align="stretch">
           <v-col cols="12" md="6">
-            <RepoUrlInputCard
+            <UrlInputCard
               :loading="isUrlLoading"
               @load-url="handleLoadByUrl"
             />
@@ -89,9 +89,8 @@
 <script setup lang="ts">
 import { onMounted, inject, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import BaseButton from '@/components/BaseButton/BaseButton.vue'
 import RepositoryCard from '@/components/RepositoryCard/RepositoryCard.vue'
-import RepoUrlInputCard from '@/components/RepoUrlInputCard/RepoUrlInputCard.vue'
+import { UrlInputCard, BaseButton } from '@git-dash/ui'
 import UserRepositoriesCard from '@/components/UserRepositoriesCard/UserRepositoriesCard.vue'
 
 import { ApiClientKey } from '@/plugins/api'

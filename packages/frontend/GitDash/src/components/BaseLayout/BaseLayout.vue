@@ -41,14 +41,12 @@
 </template>
 
 <script setup lang="ts">
-import type { ITab } from '@/models/ITab.ts'
-import Tabs from '@/components/Tabs/Tabs.vue'
-import { BaseButton } from '@/components/BaseButton'
 import { useRouter } from 'vue-router'
 import { useRepositoryStore } from '@/stores/repository.ts'
 import { storeToRefs } from 'pinia'
 import { computed, watch } from 'vue'
 import { type TimeRange, useTimeRangeStore } from '@/stores/timeRange.ts'
+import { BaseButton, Tabs, type ITab } from '@git-dash/ui'
 
 const router = useRouter()
 

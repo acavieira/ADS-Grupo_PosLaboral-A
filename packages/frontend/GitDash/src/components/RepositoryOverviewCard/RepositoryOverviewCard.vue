@@ -21,7 +21,7 @@
 </template>
 
 <script setup lang="ts">
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 import type { IRepository } from '@/models/IRepository.ts'
 
 defineProps<{

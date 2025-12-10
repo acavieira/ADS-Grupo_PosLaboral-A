@@ -5,6 +5,7 @@ import BaseButton from './BaseButton.vue'
 const meta: Meta<typeof BaseButton> = {
   title: 'UI/BaseButton',
   component: BaseButton,
+  tags: ['autodocs'],
   args: { label: 'Click me', color: 'primary' },
 }
 export default meta

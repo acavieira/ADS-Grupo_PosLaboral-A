@@ -22,7 +22,8 @@
 </template>
 
 <script setup lang="ts">
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+
+import { BaseCard } from '../BaseCard'
 
 defineProps<{
   title: string

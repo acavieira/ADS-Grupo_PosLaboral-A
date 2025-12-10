@@ -13,7 +13,7 @@
 </template>
 
 <script setup lang="ts">
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 import RepositoriesList from '@/components/RepositoriesList/RepositoriesList.vue'
 import type { IRepository } from '@/models/IRepository.ts'
 
