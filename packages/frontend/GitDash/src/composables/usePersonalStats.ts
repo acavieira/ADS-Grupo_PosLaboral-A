@@ -4,13 +4,20 @@ import { ApiClientKey } from '@/plugins/api'
 import { LoggerKey } from '@/plugins/logger'
 import { useRepositoryStore } from '@/stores/repository'
 import { useTimeRangeStore } from '@/stores/timeRange'
-import type { CommitData } from '@/components/StatisticGraph/StatisticGraph.vue'
 import type { IRepoContributionStatsDTO } from '@/models/IRepoContributionStatsDTO.ts'
 import type { IActivityDTO } from '@/models/IActivityDTO.ts'
 import type { ICodeChangeStatsDTO } from '@/models/ICodeChangeStatsDTO.ts'
 import type { IPersonalTotals } from '@/models/IPersonalTotals.ts'
+import type { ICommitData } from '@/models/ICommitData.ts'
 
-
+/**
+ * Composable to fetch and manage personal statistics for a specific user.
+ * * Automatically triggers data fetching when the selected time range or
+ * the current repository changes in the store.
+ * * @param login - The user's login handle (e.g., GitHub username).
+ * @throws {Error} If `ApiClient` or `Logger` are not provided via dependency injection.
+ * @returns An object containing reactive state for stats, code changes, charts, and loading statuses.
+ */
 export function usePersonalStats(login: string) {
   const api = inject(ApiClientKey)
   const logger = inject(LoggerKey)
@@ -21,6 +28,9 @@ export function usePersonalStats(login: string) {
 
   // --- State ---
 
+  /**
+   * Aggregated totals for the user (commits, PRs, issues, reviews).
+   */
   const totals = ref<IPersonalTotals>({
     commits: 0,
     prTotal: 0,
@@ -29,15 +39,31 @@ export function usePersonalStats(login: string) {
     issueClosed: 0,
     reviews: 0
   })
+
+  /** Loading state for the totals section. */
   const loadingTotals = ref(false)
+  /** Error flag for the totals section. */
   const errorTotals = ref(false)
 
+  /**
+   * Statistics regarding lines of code added and deleted.
+   */
   const codeChanges = ref<ICodeChangeStatsDTO>({ additions: 0, deletions: 0 })
+
+  /** Loading state for code changes. */
   const loadingChanges = ref(false)
+  /** Error flag for code changes. */
   const errorChanges = ref(false)
 
-  const chartData = ref<CommitData[]>([])
+  /**
+   * Formatted data for the activity chart (weekly breakdown).
+   * Maps backend data to { label: 'W1', value: 10 } format.
+   */
+  const chartData = ref<ICommitData[]>([])
+
+  /** Loading state for the activity chart. */
   const loadingActivity = ref(false)
+  /** Error flag for the activity chart. */
   const errorActivity = ref(false)
 
   // --- Helper ---

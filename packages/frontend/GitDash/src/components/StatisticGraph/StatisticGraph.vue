@@ -19,14 +19,10 @@
 import { ref, computed } from 'vue';
 import type { ApexOptions } from 'apexcharts';
 import { BaseCard } from '@git-dash/ui'
-
-export interface CommitData {
-  label: string;
-  value: number;
-}
+import type { ICommitData } from '@/models/ICommitData.ts'
 
 const props = defineProps<{
-  items: CommitData[];
+  items: ICommitData[];
 }>();
 
 const series = computed(() => [
