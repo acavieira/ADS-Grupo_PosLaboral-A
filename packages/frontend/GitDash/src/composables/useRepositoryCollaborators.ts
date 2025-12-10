@@ -7,6 +7,13 @@ import { LoggerKey } from '@/plugins/logger'
 import type { ICollaboratorStatsDTO } from '@/models/ICollaboratorStatsDTO'
 import type { ICollaboratorStats } from '@/models/ICollaboratorStats'
 
+/**
+ * Composable to manage the list of collaborators for the current repository.
+ * * Automatically reacts to changes in the global `RepositoryStore` or `TimeRangeStore`
+ * and refetches data accordingly.
+ * * @throws {Error} If `ApiClient` or `Logger` are not provided via dependency injection.
+ * @returns State and methods to manage repository collaborators.
+ */
 export function useRepositoryCollaborators() {
   // Inject Dependencies
   const api = inject(ApiClientKey)
@@ -23,11 +30,27 @@ export function useRepositoryCollaborators() {
   const { timeRange } = storeToRefs(timeStore)
 
   // State
+
+  /** * The list of collaborator statistics (commits, lines changed, etc.).
+   */
   const collaborators = ref<ICollaboratorStats[]>([])
+
+  /** * Indicates if the collaborators list is currently being fetched.
+   */
   const isLoading = ref(false)
+
+  /** * Holds any error object if the fetch operation fails.
+   * Null if no error occurred.
+   */
   const error = ref<unknown>(null)
 
   // Fetch Function
+
+  /**
+   * Manually triggers the fetch of collaborators.
+   * * Typically not needed as the watcher handles updates automatically,
+   * but useful for manual "Refresh" buttons.
+   */
   const fetchCollaborators = async () => {
     if (!getCurrentRepositoryFullName.value) return
 

@@ -4,6 +4,12 @@ import { LoggerKey } from '@/plugins/logger'
 import type { IRepository } from '@/models/IRepository'
 import type { IRepositoryDTO } from '@/models/IRepositoryDTO'
 
+/**
+ * Composable for managing GitHub repository data.
+ * * Handles fetching lists of repositories (all/recent) and looking up specific repositories by URL.
+ * * @throws {Error} If `ApiClient` or `Logger` are not provided via dependency injection.
+ * @returns An object containing repository lists, loading states, and fetch methods.
+ */
 export function useRepositories() {
   const api = inject(ApiClientKey)
   const logger = inject(LoggerKey)
@@ -12,14 +18,26 @@ export function useRepositories() {
     throw new Error('Dependencies not provided')
   }
 
+  /** List of all repositories available to the user. */
   const allRepositories = ref<IRepository[]>([])
+
+  /** List of recently accessed repositories. */
   const recentRepositories = ref<IRepository[]>([])
 
-  // Loading state for lists
+  /** * General loading state.
+   * True when fetching lists (all or recent repositories).
+   */
   const isLoading = ref(false)
-  // Loading state for the specific URL action
+
+  /** * Specific loading state for the "Load by URL" action.
+   * Used to show a spinner specifically on the input/button.
+   */
   const isUrlLoading = ref(false)
 
+  /**
+   * Fetches the complete list of repositories from the backend.
+   * Updates `allRepositories` and handles `isLoading`.
+   */
   const fetchAllRepositories = async () => {
     isLoading.value = true
     try {
@@ -32,6 +50,10 @@ export function useRepositories() {
     }
   }
 
+  /**
+   * Fetches the list of recently visited repositories.
+   * Updates `recentRepositories` silently (without global loading state).
+   */
   const fetchRecentRepositories = async () => {
     try {
       const res = await api.get<IRepositoryDTO>('/api/github/recentRepositories')
@@ -43,7 +65,10 @@ export function useRepositories() {
 
   /**
    * Fetches a single repository by its GitHub URL.
-   * Rethrows error so the component can handle 404s specifically.
+   * * Rethrows errors so the UI component can handle 404s or validation errors specifically.
+   * * @param urlInput - The full GitHub URL to resolve (e.g., "https://github.com/user/repo").
+   * @returns The resolved repository object.
+   * @throws Will throw if the API call fails to allow UI error handling.
    */
   const loadRepositoryByUrl = async (urlInput: string): Promise<IRepository> => {
     isUrlLoading.value = true
@@ -63,6 +88,10 @@ export function useRepositories() {
     }
   }
 
+  /**
+   * Initializer function.
+   * Fetches both all and recent repositories in parallel.
+   */
   const init = async () => {
     await Promise.all([fetchAllRepositories(), fetchRecentRepositories()])
   }
