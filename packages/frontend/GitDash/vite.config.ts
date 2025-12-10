@@ -32,12 +32,8 @@ export default defineConfig(({ mode }) => ({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      ...(mode === 'development'
-        ? {
-          '@git-dash/core': path.resolve(__dirname, 'packages/core/src'),
-          '@git-dash/ui': path.resolve(__dirname, 'packages/ui/src'),
-        }
-        : {}),
+      '@git-dash/core': path.resolve(__dirname, 'packages/core/src'),
+      '@git-dash/ui': path.resolve(__dirname, 'packages/ui/src'),
     },
   },
   server: {
