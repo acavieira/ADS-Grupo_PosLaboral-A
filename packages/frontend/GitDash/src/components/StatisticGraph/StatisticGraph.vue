@@ -18,7 +18,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import type { ApexOptions } from 'apexcharts';
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 
 export interface CommitData {
   label: string;

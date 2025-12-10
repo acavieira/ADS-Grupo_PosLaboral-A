@@ -79,7 +79,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import BaseCard from '../BaseCard/BaseCard.vue';
+import { BaseCard } from '@git-dash/ui';
 
 // Interface Definition
 export interface CodeChangeStats {

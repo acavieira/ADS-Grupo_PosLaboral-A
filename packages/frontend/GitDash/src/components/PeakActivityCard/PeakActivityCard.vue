@@ -46,7 +46,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 
 const props = defineProps<{
   peakDay: string

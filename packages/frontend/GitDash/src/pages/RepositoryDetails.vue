@@ -1,9 +1,5 @@
 <template>
-  <BaseLayout
-    :tabs="tabs"
-    :active-tab="activeTab"
-    @tab-change="handleTabChange"
-  >
+  <BaseLayout :tabs="tabs" :active-tab="activeTab" @tab-change="handleTabChange">
     <v-card flat>
       <v-card-text class="bg-grey-lighten-5">
         <div v-if="isLoading" class="d-flex justify-center pa-4">
@@ -16,24 +12,23 @@
           </div>
           <div v-else-if="activeTab === 'collaborators'">
             <v-col cols="12">
-
               <DataErrorAlert
                 v-if="error"
                 :resource-name="currentRepository?.fullName"
                 @retry="fetchCollaborators"
               >
-                We could not retrieve the list of collaborators.
-                This usually happens because you lack permissions to view members of this repository.
+                We could not retrieve the list of collaborators. This usually happens because you
+                lack permissions to view members of this repository.
               </DataErrorAlert>
 
-              <CollaboratorsTable
-                v-else
-                :collaborators="collaborators"
-              />
+              <CollaboratorsTable v-else :collaborators="collaborators" />
             </v-col>
           </div>
           <div v-else-if="activeCollaborator">
-            <PersonalStats :collaborator="activeCollaborator.login" :key="activeCollaborator.login"/>
+            <PersonalStats
+              :collaborator="activeCollaborator.login"
+              :key="activeCollaborator.login"
+            />
           </div>
         </template>
       </v-card-text>
@@ -43,7 +38,6 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import type { ITab } from '@/models/ITab.ts'
 import BaseLayout from '@/components/BaseLayout/BaseLayout.vue'
 import Overview from '@/pages/Overview.vue'
 import CollaboratorsTable from '@/components/Collaborators/Collaborators.vue'
@@ -51,7 +45,7 @@ import PersonalStats from '@/pages/PersonalStats.vue'
 import { useRepositoryCollaborators } from '@/composables/useRepositoryCollaborators'
 import { useRepositoryStore } from '@/stores/repository.ts'
 import { storeToRefs } from 'pinia'
-import DataErrorAlert from '@/components/DataErrorAlert/DataErrorAlert.vue'
+import { DataErrorAlert, type ITab } from '@git-dash/ui'
 
 const { collaborators, isLoading, error, fetchCollaborators } = useRepositoryCollaborators()
 
@@ -78,7 +72,7 @@ const tabs = computed((): ITab[] => {
 const activeTab = ref<string>('overview')
 
 const activeCollaborator = computed(() => {
-  return collaborators.value.find(c => c.login === activeTab.value)
+  return collaborators.value.find((c) => c.login === activeTab.value)
 })
 
 const handleTabChange = (key: string) => {

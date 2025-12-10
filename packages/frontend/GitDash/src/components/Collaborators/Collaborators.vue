@@ -82,7 +82,7 @@
 </template>
 
 <script setup lang="ts">
-import BaseCard from '@/components/BaseCard/BaseCard.vue'
+import { BaseCard } from '@git-dash/ui'
 
 type Role = 'admin' | 'write' | 'read'
 

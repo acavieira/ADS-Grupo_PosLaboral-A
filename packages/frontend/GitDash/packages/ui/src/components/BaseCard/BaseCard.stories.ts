@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3'
 import BaseCard from './BaseCard.vue'
 
 const meta: Meta<typeof BaseCard> = {
-  title: 'UI/BaseCard',
+  title: '/BaseCard',
   component: BaseCard,
 }
 
