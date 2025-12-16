@@ -58,6 +58,7 @@ export default mergeConfig(
           '**/*.cjs',
           '**/*.mjs',
           '**/*.d.ts',
+          '**/config/**',
           '**/types.ts',
           '**/types/*.ts',
           'src/main.ts',
