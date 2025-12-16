@@ -35,7 +35,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import { type ITab } from './ITab'
+import { type ITab } from './types/ITab'
 
 // --- Component Props ---
 const props = defineProps<{
