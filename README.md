@@ -75,7 +75,7 @@ This is a full-stack monorepo project consisting of:
 
 ---
 
-## 🧪 How to Run Tests
+## 🧪 How to Run Tests and other useful scripts
 
 ### Backend Tests (.NET Core)
 
@@ -93,17 +93,36 @@ This is a full-stack monorepo project consisting of:
       dotnet test --logger "trx;LogFileName=test-results.trx"
       ```
 
-### Frontend Tests (Vue.js)
+### Frontend Scripts (GitDash)
 
-1. Open a terminal in the frontend folder:
+1. Open a terminal in the GitDash folder:
     ```bash
-    cd packages/frontend
+    cd packages/frontend/GitDash
     ```
-2. Run all tests:
+
+2. Run unit tests:
     ```bash
-    npm run test
+    npm run test:unit
     ```
-    - This will execute all unit tests for the frontend (using Vitest).
+    - This will execute the standard unit tests using Vitest.
+
+3. Generate test coverage report:
+    ```bash
+    npm run test:unit:coverage
+    ```
+    - This runs the tests and displays a coverage summary in the console. It also generates a detailed HTML report (located in the `coverage` folder) so you can view it in your browser.
+
+4. Run Storybook:
+    ```bash
+    npm run storybook:ui
+    ```
+    - This starts the Storybook documentation for the UI workspace.
+
+5. Generate code documentation:
+    ```bash
+    npm run doc
+    ```
+    - This generates technical documentation using TypeDoc. You will see the results in the generated documentation folder.
 
 ---
 
@@ -113,7 +132,7 @@ If you prefer to run the apps manually (without Docker):
 
 ### Frontend (Vue.js)
 ```bash
-cd packages/frontend
+cd packages/frontend/GitDash
 npm install
 npm run dev
 ```
