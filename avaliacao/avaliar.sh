@@ -47,7 +47,9 @@ codificar() { printf '%s' "$1" | sed 's#/#%2F#g'; }
 
 psql_db() { docker exec -i postgres psql -U exampleuser -d gitdashdb -At -F ';' -v ON_ERROR_STOP=1 "$@"; }
 
-contem() { grep -qiF -- "$2" "$1" && echo sim || echo não; }
+# Pesquisa sem diferenciar maiúsculas. Não usa "grep -iF": no grep 3.0 do Git Bash (Windows) essa combinação aborta.
+minusculas() { tr '[:upper:]' '[:lower:]'; }
+contem() { minusculas < "$1" | grep -qF -- "$(printf '%s' "$2" | minusculas)" && echo sim || echo não; }
 
 # Classifica a resposta: "negado" = não deve devolver dados; "proprio" = só pode devolver dados da sessão.
 classificar() {
@@ -266,7 +268,7 @@ cmd_cache() {
         [ -z "$chave" ] && continue
         ttl=$(docker exec redis redis-cli TTL "$chave" | tr -d '\r')
         legivel=não
-        if printf '%s' "$chave" | grep -qiF -- "$repo_nome"; then legivel=sim; fi
+        if printf '%s' "$chave" | minusculas | grep -qF -- "$(printf '%s' "$repo_nome" | minusculas)"; then legivel=sim; fi
         printf '%s;%s;%s\n' "$chave" "$ttl" "$legivel" >> "$csv"
     done < "$RAW/chaves.txt"
     info "Entradas na cache: $(($(wc -l < "$csv") - 1)). Resultados em $csv"
@@ -318,6 +320,40 @@ cmd_revogacao() {
     info "Depois da revogação: $s2 -> $resultado. Resultados em $CSV"
 }
 
+# ---------------------------------------------------------------- colaboradores (R5)
+cmd_colaboradores() {
+    carregar_config
+    preparar_saida "${1:-}"
+    CSV="$OUT/colaboradores.csv"
+    echo "id;descricao;pedido;status;contem_login;contem_avatar;resultado" > "$CSV"
+    local caminho="/api/github/collaborators/$(codificar "$REPO_A")/1%20week"
+
+    info "Colaboradores de $REPO_A"
+    pedido_colaboradores R5.1 "Lista de colaboradores (comportamento normal)" "$caminho" normal
+    pedido_colaboradores R5.2 "Lista de colaboradores com pseudonimização ativa" "$caminho?pseudonymize=true" pseudonimos
+    info "Resultados em $CSV"
+}
+
+# pedido_colaboradores ID DESCRICAO CAMINHO normal|pseudonimos
+# Só a lista "collaborators" é analisada: o nome do repositório também vai na resposta e contém o login do dono.
+pedido_colaboradores() {
+    local id="$1" desc="$2" caminho="$3" modo="$4"
+    local corpo="$RAW/$id.txt" status login avatar resultado
+    status=$(curl -s -o "$corpo" -w '%{http_code}' -H "Cookie: $COOKIE_A" "$BASE_URL$caminho")
+    sed 's/.*"collaborators"://' "$corpo" > "$RAW/$id.lista.txt"
+    login=$(contem "$RAW/$id.lista.txt" "$USER_A")
+    avatar=$(contem "$RAW/$id.lista.txt" "avatar")
+
+    if [ "$status" = "000" ]; then resultado="SEM LIGAÇÃO"
+    elif [ "${status#2}" = "$status" ]; then resultado="VERIFICAR ($status)"
+    elif [ "$modo" = "normal" ]; then resultado="IDENTIFICADO (comportamento normal)"
+    elif [ "$login" = "sim" ] || [ "$avatar" = "sim" ]; then resultado="EXPOSTO (logins ou avatares na resposta)"
+    else resultado="OK (sem logins nem avatares)"
+    fi
+    printf '%s;%s;%s;%s;%s;%s;%s\n' "$id" "$desc" "$caminho" "$status" "$login" "$avatar" "$resultado" >> "$CSV"
+    printf '  %-6s %-3s %s\n' "$id" "$status" "$desc -> $resultado"
+}
+
 # ---------------------------------------------------------------- comparação
 comparar_csv() {
     # comparar_csv FICHEIRO_A FICHEIRO_B COLUNA_DESCRICAO COLUNA_RESULTADO ROTULO_A ROTULO_B
@@ -351,6 +387,8 @@ cmd_comparar() {
         comparar_csv "$ra/retencao.csv" "$rb/retencao.csv" 2 6 "$a" "$b"
         echo "## Revogação de acesso e cache (R4)"
         comparar_csv "$ra/revogacao.csv" "$rb/revogacao.csv" 2 4 "$a" "$b"
+        echo "## Identificação dos colaboradores (R5)"
+        comparar_csv "$ra/colaboradores.csv" "$rb/colaboradores.csv" 2 7 "$a" "$b"
     } > "$out"
     info "Comparação em $out"
 }
@@ -366,6 +404,7 @@ uso: avaliacao/avaliar.sh <comando>
   cache <fase>                lista as entradas do Redis e o respetivo TTL (R4)
   cache-expiracao <fase>      espera pelo fim do TTL e confirma novo pedido ao GitHub (R4)
   revogacao <fase>            reutilização da cache depois de perder acesso (R4, interativo)
+  colaboradores <fase>        logins e avatares na lista de colaboradores, com e sem pseudónimos (R5)
   comparar <fase1> <fase2>    tabela markdown com os resultados lado a lado
 
 Fases sugeridas: antes, depois.
@@ -380,6 +419,7 @@ case "$cmd" in
     cache) cmd_cache "$@" ;;
     cache-expiracao) cmd_cache_expiracao "$@" ;;
     revogacao) cmd_revogacao "$@" ;;
+    colaboradores) cmd_colaboradores "$@" ;;
     comparar) cmd_comparar "$@" ;;
     *) uso; [ -z "$cmd" ] || exit 1 ;;
 esac

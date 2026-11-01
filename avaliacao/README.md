@@ -27,6 +27,7 @@ Os cookies são credenciais. O `config.local` e as respostas em bruto (`resultad
 ./avaliacao/avaliar.sh cache antes
 ./avaliacao/avaliar.sh revogacao antes               # interativo: pede para remover B do repo partilhado
 ./avaliacao/avaliar.sh cache-expiracao antes         # espera pelo fim do TTL (30 min na baseline)
+./avaliacao/avaliar.sh colaboradores antes           # R5: logins e avatares na lista de colaboradores
 
 # fase "depois" (com as alterações integradas)
 ./avaliacao/avaliar.sh acesso depois
@@ -51,5 +52,9 @@ No teste de revogação, volta a adicionar B ao repositório antes de repetir o 
 | cache | Chaves e TTL no Redis | TTL ≤ prazo configurado; chaves sem nomes legíveis |
 | revogação | Resposta da cache depois de B perder o acesso | `PROTEGIDO` |
 | expiração | A entrada desaparece no fim do TTL e o pedido seguinte vai ao GitHub | `existe_apos_prazo=não`, `novo_pedido_foi_ao_github=sim` |
+| R5 | A lista de colaboradores traz logins e avatares? (R5.1 normal, R5.2 com `?pseudonymize=true`) | R5.1 `IDENTIFICADO`; R5.2 `OK (sem logins nem avatares)` |
+
+No R5 só se analisa a lista `collaborators` da resposta (o nome do repositório também vai na resposta e contém o login do dono).
+Um pseudónimo não garante anonimato: as métricas, o papel e as datas continuam a poder ser comparados com a informação pública do GitHub.
 
 `EXPOSTO`, `FUGA` e `NÃO CONFORME` na fase `antes` são a evidência do risco. Na fase `depois` indicam uma limitação que tem de ser documentada.
