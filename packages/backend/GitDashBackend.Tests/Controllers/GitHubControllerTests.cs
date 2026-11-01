@@ -69,7 +69,8 @@ namespace GitDashBackend.Tests.Controllers
                 gitHubService,
                 dbService,
                 logger,
-                context
+                context,
+                Mock.Of<ICollaboratorRefProtector>()
             );
 
             controller.ControllerContext = new ControllerContext

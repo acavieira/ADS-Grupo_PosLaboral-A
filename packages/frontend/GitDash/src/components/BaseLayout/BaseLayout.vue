@@ -12,7 +12,7 @@
             </BaseButton>
 
             <span class="text-h6 font-weight-medium">
-              {{ getCurrentRepositoryFullName }}
+              {{ repositoryName ?? getCurrentRepositoryFullName }}
             </span>
           </v-col>
 
@@ -74,6 +74,8 @@ const timeRangeModel = computed({
 const props = defineProps<{
   tabs: ITab[]
   activeTab: string
+  /** Name shown in the header instead of the repository's real full name (e.g. with the owner hidden). */
+  repositoryName?: string
 }>()
 
 const emit = defineEmits<{

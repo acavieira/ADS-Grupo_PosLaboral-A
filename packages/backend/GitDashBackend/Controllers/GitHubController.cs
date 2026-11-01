@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using GitDashBackend.Services.Implementations; 
 
 namespace GitDashBackend.Controllers;
 
@@ -17,16 +18,19 @@ public class GitHubController : ControllerBase
     private readonly IDbService _dbService;
     private readonly ILogger<GitHubController> _logger;
     private readonly Data.AppDbContext _dbContext;
+    private readonly ICollaboratorRefProtector _collaboratorRefs;
 
     public GitHubController(IGitHubService gitHubService,
         IDbService dbService,
         ILogger<GitHubController> logger,
-        Data.AppDbContext dbContext)
+        Data.AppDbContext dbContext,
+        ICollaboratorRefProtector collaboratorRefs)
     {
         _gitHubService = gitHubService;
         _dbService = dbService;
         _logger = logger;
         _dbContext = dbContext;
+        _collaboratorRefs = collaboratorRefs;
     }
 
 
@@ -271,7 +275,8 @@ public async Task<IActionResult> GetRecentRepositories()
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositoryCollaborators(
         [FromRoute] string fullName,
-        [FromRoute] string timeRange)
+        [FromRoute] string timeRange, 
+        [FromQuery] bool pseudonymize = false)
     {
         try
         {
@@ -307,12 +312,38 @@ public async Task<IActionResult> GetRecentRepositories()
             {
                 return NotFound(new { error = $"Repository '{fullName}' not found or invalid." });
             }
-            return Ok(new
-            {
-                repository = decodedFullName,
-                count = collaborators.count,
-                collaborators = collaborators.collaborators
-            });
+            if (pseudonymize)
+                {
+                    var slash = decodedFullName.IndexOf('/');
+                    var owner = slash > 0 ? decodedFullName[..slash] : null;
+                    var pseudonymized = CollaboratorPseudonymizer.Apply(
+                        collaborators.collaborators,
+                        login => _collaboratorRefs.Create(decodedFullName, login),
+                        owner);
+
+                    // The owner's login is part of the repository name. When the owner is one of the
+                    // collaborators (a personal repository), label the repository with the alias instead.
+                    var ownerAlias = pseudonymized.FirstOrDefault(c => c.IsOwner)?.Alias;
+                    var repositoryLabel = ownerAlias == null
+                        ? decodedFullName
+                        : $"{ownerAlias}/{decodedFullName[(slash + 1)..]}";
+
+                    return Ok(new
+                    {
+                        repository = repositoryLabel,
+                        count = pseudonymized.Count,
+                        pseudonymized = true,
+                        collaborators = pseudonymized
+                    });
+                }
+
+                return Ok(new
+                {
+                    repository = decodedFullName,
+                    count = collaborators.count,
+                    pseudonymized = false,
+                    collaborators = collaborators.collaborators
+                });
         }
         catch (ArgumentException ex)
         {
@@ -441,7 +472,10 @@ public async Task<IActionResult> GetRecentRepositories()
         try
         {
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            var decodedUsername = Uri.UnescapeDataString(username);
+            if (!TryResolveCollaborator(decodedFullName, Uri.UnescapeDataString(username), out var decodedUsername))
+            {
+                return NotFound(new { error = "Collaborator reference is invalid or expired." });
+            }
 
             // Access log
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
@@ -543,7 +577,10 @@ public async Task<IActionResult> GetRecentRepositories()
                     }
                 }
                 var decodedFullName = Uri.UnescapeDataString(fullName);
-                var decodedUsername = Uri.UnescapeDataString(username);
+                if (!TryResolveCollaborator(decodedFullName, Uri.UnescapeDataString(username), out var decodedUsername))
+                {
+                    return NotFound(new { error = "Collaborator reference is invalid or expired." });
+                }
                 var activity = await _gitHubService.GetCollaboratorActivityAsync(accessToken, decodedFullName, decodedUsername, range);
                 if (activity == null)
                 {
@@ -655,7 +692,9 @@ public async Task<IActionResult> GetRecentRepositories()
                     await _dbContext.SaveChangesAsync();
                 }
             }
-            var result = await _gitHubService.GetCollaboratorCodeChangesAsync(accessToken, fullName, username, range);
+            if (!TryResolveCollaborator(Uri.UnescapeDataString(fullName), username, out var login))
+                return NotFound(new { error = "Collaborator reference is invalid or expired." });
+            var result = await _gitHubService.GetCollaboratorCodeChangesAsync(accessToken, fullName, login, range);
             if (result == null)
                 return NotFound(new { error = "Repository or collaborator not found." });
             return Ok(result);
@@ -675,6 +714,18 @@ public async Task<IActionResult> GetRecentRepositories()
         }
     }
 
+
+    // With pseudonymization the browser only knows an opaque reference; the server turns it back into the login.
+    private bool TryResolveCollaborator(string repository, string collaborator, out string login)
+    {
+        if (!_collaboratorRefs.IsReference(collaborator))
+        {
+            login = collaborator;
+            return true;
+        }
+
+        return _collaboratorRefs.TryResolve(collaborator, repository, out login);
+    }
 
     // Helper to parse owner/repo from full URL or shorthand
     private string? ParseOwnerRepoFromUrl(string url)

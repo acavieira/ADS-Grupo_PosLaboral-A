@@ -4,7 +4,28 @@
       <h2 class="text-h6 font-weight-medium">
         Collaborators ({{ collaborators.length }})
       </h2>
+
+      <v-switch
+        :model-value="pseudonymize"
+        label="Pseudonymize collaborators"
+        color="primary"
+        density="compact"
+        hide-details
+        inset
+        @update:model-value="emit('update:pseudonymize', !!$event)"
+      />
     </div>
+
+    <v-alert
+      v-if="pseudonymize"
+      type="info"
+      variant="tonal"
+      density="compact"
+      class="mb-4"
+    >
+      Collaborators are shown as pseudonyms. A pseudonym does not guarantee anonymity:
+      dates, activity patterns and public GitHub data can still identify a person.
+    </v-alert>
 
     <v-table density="comfortable">
       <thead>
@@ -24,7 +45,8 @@
       >
         <td class="py-3">
           <div class="d-flex align-center ga-3">
-            <v-avatar size="32" class="border">
+            <PseudonymAvatar v-if="pseudonymize" />
+            <v-avatar v-else size="32" class="border">
               <v-img
                 :src="c.avatarUrl"
                 :alt="c.login"
@@ -36,7 +58,7 @@
                 <span class="text-body-2 font-weight-bold">
                   {{ c.displayName || c.login }}
                 </span>
-              <span class="text-caption text-medium-emphasis">
+              <span v-if="!pseudonymize" class="text-caption text-medium-emphasis">
                   @{{ c.login }}
                 </span>
             </div>
@@ -83,6 +105,7 @@
 
 <script setup lang="ts">
 import { BaseCard } from '@git-dash/ui'
+import PseudonymAvatar from './PseudonymAvatar.vue'
 
 type Role = 'admin' | 'write' | 'read'
 
@@ -96,8 +119,17 @@ interface Collaborator {
   displayName?: string
 }
 
-const props = defineProps<{
-  collaborators: Collaborator[]
+const props = withDefaults(
+  defineProps<{
+    collaborators: Collaborator[]
+    /** Replaces avatars with a generic one and hides logins; the rows already carry pseudonyms. */
+    pseudonymize?: boolean
+  }>(),
+  { pseudonymize: false },
+)
+
+const emit = defineEmits<{
+  (e: 'update:pseudonymize', value: boolean): void
 }>()
 
 function getRoleColor(role: Role) {
