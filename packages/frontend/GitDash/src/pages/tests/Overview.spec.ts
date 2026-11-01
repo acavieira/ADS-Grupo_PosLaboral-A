@@ -77,6 +77,45 @@ describe('RepositoryOverviewPage', () => {
     expect(wrapper.findComponent(StatKpiCard).exists()).toBe(false)
   })
 
+  it('shows the given repository name instead of the real full name', () => {
+    mockUseRepositoryOverview.mockReturnValue({
+      isLoading: false,
+      error: null,
+      currentRepository: { fullName: 'ines/IA_Project', description: 'x' },
+      stats: {},
+      fetchStats: vi.fn()
+    })
+
+    const wrapper = shallowMount(Overview, {
+      props: { repositoryName: 'Colaborador 1/IA_Project' },
+      global: {
+        stubs: {
+          'v-row': { template: '<div><slot /></div>' },
+          'v-col': { template: '<div><slot /></div>' }
+        }
+      }
+    })
+
+    expect(wrapper.findComponent(RepositoryCard).props('repo')).toMatchObject({
+      fullName: 'Colaborador 1/IA_Project',
+      description: 'x'
+    })
+  })
+
+  it('uses the given repository name in the error alert too', () => {
+    mockUseRepositoryOverview.mockReturnValue({
+      isLoading: false,
+      error: { message: 'Network Error' },
+      currentRepository: { fullName: 'ines/IA_Project' },
+      stats: {},
+      fetchStats: vi.fn()
+    })
+
+    const wrapper = shallowMount(Overview, { props: { repositoryName: 'Colaborador 1/IA_Project' } })
+
+    expect(wrapper.findComponent(DataErrorAlert).props('resourceName')).toBe('Colaborador 1/IA_Project')
+  })
+
   it('renders the Data/Content state correctly', () => {
     // Arrange: Simulate success state with data
     const mockStats = {

@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using GitDashBackend.Services.Implementations; 
 
 namespace GitDashBackend.Controllers;
 
@@ -17,16 +18,19 @@ public class GitHubController : ControllerBase
     private readonly IDbService _dbService;
     private readonly ILogger<GitHubController> _logger;
     private readonly Data.AppDbContext _dbContext;
+    private readonly ICollaboratorRefProtector _collaboratorRefs;
 
     public GitHubController(IGitHubService gitHubService,
         IDbService dbService,
         ILogger<GitHubController> logger,
-        Data.AppDbContext dbContext)
+        Data.AppDbContext dbContext,
+        ICollaboratorRefProtector collaboratorRefs)
     {
         _gitHubService = gitHubService;
         _dbService = dbService;
         _logger = logger;
         _dbContext = dbContext;
+        _collaboratorRefs = collaboratorRefs;
     }
 
 
@@ -74,20 +78,9 @@ public class GitHubController : ControllerBase
             }
 
             // Fetch repositories
+            // Listing is not a visit: the history is only updated in the overview (stats) endpoint,
+            // and only for the session user. The previous lookup by name changed other users' history.
             RepositoriesDto repositories = await _gitHubService.GetUserRepositoriesAsync(accessToken);
-
-            // Update repository visits
-            foreach (var repoDto in repositories.repositories)
-            {
-                var repo = await _dbContext.Repositories.SingleOrDefaultAsync(r => r.Name == repoDto.FullName);
-                if (repo != null)
-                {
-                    repo.VisitsNumber += 1;
-                    repo.LastVisited = DateTime.SpecifyKind(DateTime.UtcNow, DateTimeKind.Unspecified);
-                    _dbContext.Repositories.Update(repo);
-                }
-            }
-            await _dbContext.SaveChangesAsync();
 
             return Ok(repositories);
         }
@@ -194,10 +187,10 @@ public async Task<IActionResult> GetRecentRepositories()
 
 
     /// <summary>
-    /// Get commits for a specific repository using fullName as a query parameter
+    /// Get commits for a specific repository using fullName as a query parameter.
+    /// Uses the GitHub token of the authenticated session, like every other endpoint.
     /// </summary>
     /// <param name="fullName">Repository full name in format: owner/repo (e.g., 'acavieira/ADS-Grupo_PosLaboral-A')</param>
-    /// <param name="authorization">GitHub Personal Access Token</param>
     /// <returns>List of commits with caching</returns>
     /// <example>GET /api/github/commits?fullName=acavieira/ADS-Grupo_PosLaboral-A</example>
     [Authorize]
@@ -207,13 +200,12 @@ public async Task<IActionResult> GetRecentRepositories()
     [ProducesResponseType(typeof(object), StatusCodes.Status401Unauthorized)]
     [ProducesResponseType(typeof(object), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(object), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> GetRepositoryCommits(
-        [FromQuery] string fullName,
-        [FromHeader(Name = "Authorization")] string? authorization)
+    public async Task<IActionResult> GetRepositoryCommits([FromQuery] string fullName)
     {
-        if (string.IsNullOrEmpty(authorization))
+        var accessToken = await HttpContext.GetTokenAsync("access_token");
+        if (string.IsNullOrEmpty(accessToken))
         {
-            return BadRequest(new { error = "Authorization header with GitHub token is required" });
+            return Unauthorized(new { error = "GitHub access token not found. Please login via GitHub first." });
         }
 
         if (string.IsNullOrEmpty(fullName) || !fullName.Contains('/'))
@@ -240,7 +232,7 @@ public async Task<IActionResult> GetRecentRepositories()
                     await _dbContext.SaveChangesAsync();
                 }
             }
-            CommitsDto commits = await _gitHubService.GetRepositoryCommitsByFullNameAsync(authorization, fullName);
+            CommitsDto commits = await _gitHubService.GetRepositoryCommitsByFullNameAsync(accessToken, fullName);
             return Ok(new 
             { 
                 repository = fullName,
@@ -283,7 +275,8 @@ public async Task<IActionResult> GetRecentRepositories()
     [ProducesResponseType(StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> GetRepositoryCollaborators(
         [FromRoute] string fullName,
-        [FromRoute] string timeRange)
+        [FromRoute] string timeRange, 
+        [FromQuery] bool pseudonymize = false)
     {
         try
         {
@@ -319,12 +312,38 @@ public async Task<IActionResult> GetRecentRepositories()
             {
                 return NotFound(new { error = $"Repository '{fullName}' not found or invalid." });
             }
-            return Ok(new
-            {
-                repository = decodedFullName,
-                count = collaborators.count,
-                collaborators = collaborators.collaborators
-            });
+            if (pseudonymize)
+                {
+                    var slash = decodedFullName.IndexOf('/');
+                    var owner = slash > 0 ? decodedFullName[..slash] : null;
+                    var pseudonymized = CollaboratorPseudonymizer.Apply(
+                        collaborators.collaborators,
+                        login => _collaboratorRefs.Create(decodedFullName, login),
+                        owner);
+
+                    // The owner's login is part of the repository name. When the owner is one of the
+                    // collaborators (a personal repository), label the repository with the alias instead.
+                    var ownerAlias = pseudonymized.FirstOrDefault(c => c.IsOwner)?.Alias;
+                    var repositoryLabel = ownerAlias == null
+                        ? decodedFullName
+                        : $"{ownerAlias}/{decodedFullName[(slash + 1)..]}";
+
+                    return Ok(new
+                    {
+                        repository = repositoryLabel,
+                        count = pseudonymized.Count,
+                        pseudonymized = true,
+                        collaborators = pseudonymized
+                    });
+                }
+
+                return Ok(new
+                {
+                    repository = decodedFullName,
+                    count = collaborators.count,
+                    pseudonymized = false,
+                    collaborators = collaborators.collaborators
+                });
         }
         catch (ArgumentException ex)
         {
@@ -380,10 +399,9 @@ public async Task<IActionResult> GetRecentRepositories()
 
             if (!string.IsNullOrEmpty(username))
             {
-                //var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Username == username);
-                var user = _dbService.GetUserbyUsername(username);
-                if (user.Result != null)
-                    userId = user.Result.Id;
+                var user = await _dbService.GetUserbyUsername(username);
+                if (user != null)
+                    userId = user.Id;
             }
 
             // 2. Perform Database Operations (Log + Repository Upsert)
@@ -454,7 +472,10 @@ public async Task<IActionResult> GetRecentRepositories()
         try
         {
             var decodedFullName = Uri.UnescapeDataString(fullName);
-            var decodedUsername = Uri.UnescapeDataString(username);
+            if (!TryResolveCollaborator(decodedFullName, Uri.UnescapeDataString(username), out var decodedUsername))
+            {
+                return NotFound(new { error = "Collaborator reference is invalid or expired." });
+            }
 
             // Access log
             var identity = HttpContext.User.Identity as System.Security.Claims.ClaimsIdentity;
@@ -556,7 +577,10 @@ public async Task<IActionResult> GetRecentRepositories()
                     }
                 }
                 var decodedFullName = Uri.UnescapeDataString(fullName);
-                var decodedUsername = Uri.UnescapeDataString(username);
+                if (!TryResolveCollaborator(decodedFullName, Uri.UnescapeDataString(username), out var decodedUsername))
+                {
+                    return NotFound(new { error = "Collaborator reference is invalid or expired." });
+                }
                 var activity = await _gitHubService.GetCollaboratorActivityAsync(accessToken, decodedFullName, decodedUsername, range);
                 if (activity == null)
                 {
@@ -668,7 +692,9 @@ public async Task<IActionResult> GetRecentRepositories()
                     await _dbContext.SaveChangesAsync();
                 }
             }
-            var result = await _gitHubService.GetCollaboratorCodeChangesAsync(accessToken, fullName, username, range);
+            if (!TryResolveCollaborator(Uri.UnescapeDataString(fullName), username, out var login))
+                return NotFound(new { error = "Collaborator reference is invalid or expired." });
+            var result = await _gitHubService.GetCollaboratorCodeChangesAsync(accessToken, fullName, login, range);
             if (result == null)
                 return NotFound(new { error = "Repository or collaborator not found." });
             return Ok(result);
@@ -688,6 +714,18 @@ public async Task<IActionResult> GetRecentRepositories()
         }
     }
 
+
+    // With pseudonymization the browser only knows an opaque reference; the server turns it back into the login.
+    private bool TryResolveCollaborator(string repository, string collaborator, out string login)
+    {
+        if (!_collaboratorRefs.IsReference(collaborator))
+        {
+            login = collaborator;
+            return true;
+        }
+
+        return _collaboratorRefs.TryResolve(collaborator, repository, out login);
+    }
 
     // Helper to parse owner/repo from full URL or shorthand
     private string? ParseOwnerRepoFromUrl(string url)

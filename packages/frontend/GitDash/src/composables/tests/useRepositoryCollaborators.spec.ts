@@ -101,7 +101,7 @@ describe('useRepositoryCollaborators', () => {
     expect(result.isLoading.value).toBe(false)
     expect(result.collaborators.value).toEqual(mockResponse.collaborators)
 
-    const expectedUrl = `/api/github/collaborators/${encodeURIComponent('org/repo')}/${encodeURIComponent('30d')}`
+    const expectedUrl = `/api/github/collaborators/${encodeURIComponent('org/repo')}/${encodeURIComponent('30d')}?pseudonymize=true`
     expect(mockApi.get).toHaveBeenCalledWith(expectedUrl)
   })
 
@@ -143,6 +143,89 @@ describe('useRepositoryCollaborators', () => {
     // Assert
     expect(mockApi.get).toHaveBeenCalledTimes(1)
     expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('1y'))
+  })
+
+  it('asks for pseudonyms by default', async () => {
+    mockApi.get.mockResolvedValue({ collaborators: [] })
+
+    const { result } = withSetup(() => useRepositoryCollaborators(), providers)
+    await flushPromises()
+
+    expect(result.pseudonymize.value).toBe(true)
+    expect(mockApi.get).toHaveBeenCalledTimes(1)
+    expect(mockApi.get).toHaveBeenCalledWith(expect.stringContaining('?pseudonymize=true'))
+  })
+
+  it('refetches without the parameter when the option is turned off', async () => {
+    mockApi.get.mockResolvedValue({ collaborators: [] })
+
+    const { result } = withSetup(() => useRepositoryCollaborators(), providers)
+    await flushPromises()
+    mockApi.get.mockClear()
+
+    result.pseudonymize.value = false
+    await flushPromises()
+
+    expect(mockApi.get).toHaveBeenCalledTimes(1)
+    expect(mockApi.get).toHaveBeenCalledWith(expect.not.stringContaining('pseudonymize'))
+  })
+
+  it('uses the alias as identifier, keeps the opaque reference and leaves the avatar empty when pseudonymized', async () => {
+    mockApi.get.mockResolvedValue({
+      pseudonymized: true,
+      collaborators: [
+        { alias: 'Colaborador 1', reference: '~opaque-1', role: 'admin', commits: 7, pullRequests: 2, issues: 1 }
+      ]
+    })
+
+    const { result } = withSetup(() => useRepositoryCollaborators(), providers)
+    await flushPromises()
+
+    expect(result.collaborators.value).toEqual([
+      {
+        login: 'Colaborador 1',
+        avatarUrl: '',
+        reference: '~opaque-1',
+        role: 'admin',
+        commits: 7,
+        pullRequests: 2,
+        issues: 1
+      }
+    ])
+  })
+
+  it('keeps the repository label from the API only while pseudonymized', async () => {
+    mockApi.get.mockResolvedValue({
+      pseudonymized: true,
+      repository: 'Colaborador 1/repo',
+      collaborators: []
+    })
+
+    const { result } = withSetup(() => useRepositoryCollaborators(), providers)
+    await flushPromises()
+    expect(result.repositoryLabel.value).toBe('Colaborador 1/repo')
+
+    mockApi.get.mockResolvedValue({ pseudonymized: false, repository: 'ana/repo', collaborators: [] })
+    result.pseudonymize.value = false
+    await flushPromises()
+    expect(result.repositoryLabel.value).toBeNull()
+  })
+
+  it('clears the repository label when the request fails', async () => {
+    mockApi.get.mockResolvedValueOnce({
+      pseudonymized: true,
+      repository: 'Colaborador 1/repo',
+      collaborators: []
+    })
+
+    const { result } = withSetup(() => useRepositoryCollaborators(), providers)
+    await flushPromises()
+    expect(result.repositoryLabel.value).toBe('Colaborador 1/repo')
+
+    mockApi.get.mockRejectedValue(new Error('boom'))
+    await result.fetchCollaborators()
+
+    expect(result.repositoryLabel.value).toBeNull()
   })
 
   it('refetches when Repository changes', async () => {

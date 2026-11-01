@@ -36,9 +36,9 @@ describe('BaseLayout.vue', () => {
   })
 
   // 4. Helper function with typed initialState
-  const mountComponent = (initialState: MockState = {}) => {
+  const mountComponent = (initialState: MockState = {}, extraProps: Record<string, unknown> = {}) => {
     return mount(BaseLayout, {
-      props: defaultProps,
+      props: { ...defaultProps, ...extraProps },
       slots: {
         default: '<div data-test="slot-content">Slot Content</div>',
       },
@@ -97,6 +97,22 @@ describe('BaseLayout.vue', () => {
     // Check if the slot content is rendered
     expect(wrapper.find('[data-test="slot-content"]').exists()).toBe(true)
     expect(wrapper.text()).toContain('Slot Content')
+  })
+
+  it('shows the repository name given by the page instead of the real full name', () => {
+    const wrapper = mountComponent(
+      { repository: { currentRepository: { fullName: 'ines/IA_Project' } } },
+      { repositoryName: 'Colaborador 1/IA_Project' }
+    )
+
+    expect(wrapper.text()).toContain('Colaborador 1/IA_Project')
+    expect(wrapper.text()).not.toContain('ines')
+  })
+
+  it('shows the real full name when the page gives none', () => {
+    const wrapper = mountComponent({ repository: { currentRepository: { fullName: 'ines/IA_Project' } } })
+
+    expect(wrapper.text()).toContain('ines/IA_Project')
   })
 
   it('redirects to /repository-choice if currentRepository is missing (watcher)', async () => {

@@ -1,11 +1,11 @@
 <template>
   <v-row v-if="currentRepository" class="mb-2">
     <v-col cols="12">
-      <RepositoryCard :repo="currentRepository" :clickable="false" />
+      <RepositoryCard :repo="displayedRepository ?? currentRepository" :clickable="false" />
     </v-col>
   </v-row>
   <div v-if="error">
-    <DataErrorAlert :resource-name="currentRepository?.fullName" @retry="fetchStats" />
+    <DataErrorAlert :resource-name="repositoryName ?? currentRepository?.fullName" @retry="fetchStats" />
   </div>
   <div v-else-if="isLoading" class="d-flex justify-center pa-12">
     <v-progress-circular indeterminate color="primary" />
@@ -54,6 +54,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed, unref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useTimeRangeStore } from '@/stores/timeRange.ts'
 import { useRepositoryOverview } from '@/composables/useRepositoryOverview'
@@ -64,9 +65,19 @@ import RepositoryCard from '@/components/RepositoryCard/RepositoryCard.vue'
 import OpenWorkCard from '@/components/OpenWorkCard/OpenWorkCard.vue'
 import PeakActivityCard from '@/components/PeakActivityCard/PeakActivityCard.vue'
 
+const props = defineProps<{
+  /** Name shown instead of the repository's real full name (e.g. with the owner hidden). */
+  repositoryName?: string
+}>()
+
 // Logic
 const { getHumanReadableTimeRange } = storeToRefs(useTimeRangeStore())
 const { stats, currentRepository, error, isLoading, fetchStats } = useRepositoryOverview()
+
+const displayedRepository = computed(() => {
+  const repository = unref(currentRepository)
+  return repository && props.repositoryName ? { ...repository, fullName: props.repositoryName } : null
+})
 
 // Create a reactive alias for the template
 const humanTimeRange = getHumanReadableTimeRange

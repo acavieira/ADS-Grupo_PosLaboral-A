@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import Collaborators from './Collaborators.vue'
+import PseudonymAvatar from './PseudonymAvatar.vue'
 
 // Mock data types to match component interface
 type Role = 'admin' | 'write' | 'read'
@@ -123,6 +124,52 @@ describe('Collaborators.vue', () => {
     expect(chip.props('color')).toBe('grey-lighten-1')
     expect(icon.text()).toBe('mdi-eye-outline')
     expect(wrapper.text()).toContain('read')
+  })
+
+  it('shows avatars and @login by default', () => {
+    const wrapper = mountComponent(mockCollaborators)
+
+    expect(wrapper.findAll('v-avatar-stub')).toHaveLength(mockCollaborators.length)
+    expect(wrapper.findAllComponents(PseudonymAvatar)).toHaveLength(0)
+    expect(wrapper.text()).toContain('@octocat')
+    expect(wrapper.text()).not.toContain('pseudonyms')
+  })
+
+  it('shows a generic avatar and hides @login when pseudonymize is on', () => {
+    const pseudonymized: Collaborator[] = [
+      { login: 'Colaborador 1', avatarUrl: '', role: 'write', commits: 9, pullRequests: 2, issues: 1 },
+      { login: 'Colaborador 2', avatarUrl: '', role: 'read', commits: 3, pullRequests: 0, issues: 0 }
+    ]
+    const wrapper = mount(Collaborators, {
+      props: { collaborators: pseudonymized, pseudonymize: true },
+      global: {
+        stubs: {
+          BaseCard: { template: '<div><slot /></div>' },
+          'v-table': { template: '<table><slot /></table>' },
+          'v-chip': { template: '<div class="v-chip"><slot /></div>' },
+          'v-icon': { template: '<span class="v-icon"><slot /></span>' },
+          'v-avatar': true,
+          'v-img': true,
+        }
+      }
+    })
+
+    // One generic avatar per row, and no real image is requested
+    expect(wrapper.findAllComponents(PseudonymAvatar)).toHaveLength(pseudonymized.length)
+    expect(wrapper.findAll('v-img-stub')).toHaveLength(0)
+    expect(wrapper.text()).toContain('Colaborador 1')
+    expect(wrapper.text()).not.toContain('@')
+    expect(wrapper.text()).toContain('does not guarantee anonymity')
+    // The individual views work with pseudonyms, so the notice must not say they are hidden
+    expect(wrapper.text()).not.toContain('individual views')
+  })
+
+  it('emits update:pseudonymize when the switch changes', async () => {
+    const wrapper = mountComponent(mockCollaborators)
+
+    await wrapper.findComponent({ name: 'VSwitch' }).vm.$emit('update:modelValue', true)
+
+    expect(wrapper.emitted('update:pseudonymize')).toEqual([[true]])
   })
 
   it('displays empty state message when list is empty', () => {
